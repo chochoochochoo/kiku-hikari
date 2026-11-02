@@ -85,6 +85,8 @@ def main(argv=None):
     ap.add_argument("--every", type=float, default=4.0, help="claude モード: 要約を送る間隔（秒）")
     ap.add_argument("--model", default=None, help="claude モード: モデル ID（既定 claude-opus-5-5）")
     ap.add_argument("--effort", default="low")
+    ap.add_argument("--summary", choices=["a", "b", "c", "d"], default="a", help="claude モード: 要約の形（A/B 比較用・claude_worker.FeatureSummarizer）")
+    ap.add_argument("--adopt", choices=["strict", "lowok"], default="strict", help="claude モード: 確信度 low の予測を採るか（A/B 比較用）")
     ap.add_argument("--bpm", type=float, default=None, help="固定テンポ（拍追従を使わない退避策）")
     ap.add_argument("--node"); ap.add_argument("--universe", type=int, default=None); ap.add_argument("--address", type=int, default=1)
     ap.add_argument("--fixtures", type=int, default=1, help="灯体の台数（アドレスは --address から 11ch ずつ。左右は Pan を対称に）")
@@ -127,13 +129,13 @@ def main(argv=None):
     if a.viz:
         from .viz import Viz
         viz = Viz()
-    engine = ForesightEngine() if a.mode == "claude" else BeatEngine()
+    engine = ForesightEngine(adopt=a.adopt) if a.mode == "claude" else BeatEngine()
     worker = summarizer = None
     if a.mode == "claude":
         from .claude_worker import ClaudeWorker, FeatureSummarizer
-        worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log)
-        summarizer = FeatureSummarizer()
-        log.event("claude_config", model=worker.model, effort=a.effort, every=a.every)
+        worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log, variant=a.summary)
+        summarizer = FeatureSummarizer(variant=a.summary)
+        log.event("claude_config", model=worker.model, effort=a.effort, every=a.every, summary=a.summary, adopt=a.adopt)
     next_claude = 0.0; seen_gen = -1
     detector = ChangeDetector() if a.mode in ("claude", "beat", "rules") and not a.no_audio else None
 
@@ -211,6 +213,8 @@ def main(argv=None):
             else:
                 if beat:
                     engine.on_beat(); beats += 1
+                    if summarizer is not None:
+                        summarizer.on_beat()
                     log.event("beat", n=beats, tempo_bpm=st["tempo_bpm"], confidence=st["confidence"])
                 period_s = 60.0 / st["tempo_bpm"] if st["tempo_bpm"] else 0.5
                 if worker is not None:

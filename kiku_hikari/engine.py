@@ -34,9 +34,10 @@ class BeatEngine:
 class ForesightEngine(BeatEngine):
     """Claude の先読み（Foresight）を受け取り、語彙・色・溜め・開きを拍の上に載せる"""
 
-    def __init__(self, beats_per_bar: int = 4):
+    def __init__(self, beats_per_bar: int = 4, adopt: str = "strict"):
         super().__init__()
         self.bpb = beats_per_bar
+        self.adopt = adopt          # strict=確信度 low の予測は捨てる（従来）／lowok=low でも開き方の指定があれば採る
         self.fs = None              # 最新の Foresight
         self.boundary_at = None     # 予測した境界の時刻（秒・単調時計）
         self.open_at = None         # 小節頭にクオンタイズした開きの時刻
@@ -49,7 +50,7 @@ class ForesightEngine(BeatEngine):
     def on_foresight(self, fs, now: float):
         self.fs = fs
         self.color, self.next_color = fs.color.value, fs.next_color.value
-        if fs.open_style.value != "none" and fs.confidence.value != "low":
+        if fs.open_style.value != "none" and (fs.confidence.value != "low" or self.adopt == "lowok"):
             self.boundary_at = now + fs.seconds_to_boundary
         elif fs.confidence.value == "low":
             self.boundary_at = None

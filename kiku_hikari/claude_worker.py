@@ -17,6 +17,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 MODEL_DEFAULT = "claude-opus-5-5"
+ONSET_FIXED_SCALE = 200.0   # 要約 c の固定尺度（実測: 試験曲 3 本の 1 秒平均が 108〜183）
 KNOWLEDGE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "knowledge", "lighting_knowledge.json")
 
 
@@ -76,6 +77,10 @@ SYSTEM_FIXED = """あなたはライブの照明オペレーターの判断を�
 色は灯体の色ホイールにある 8 色から選ぶ。点滅は使わない（安全は Python が担う）。
 以下は照明家の知識ファイル（JSON）。規則に根拠がある場合はそれに従う。"""
 
+# 要約 d 用の確信度の基準（A/B 比較で、a〜c は 219 応答中 218 が confidence=low＝予測が一度も採られなかったため）
+CONFIDENCE_RULE_D = """
+確信度の基準: 曲頭からの小節番号が 8 の倍数に近づき、かつ直近 8 小節の level か onset が上がり続けている（または急に下がった）なら、次の境界の予測は confidence=mid 以上・open_style は none 以外にする。どちらか一方だけなら mid、どちらも無ければ low。区間名が分からなくても、境界の時刻の確信で決めてよい。"""
+
 
 def load_knowledge() -> str:
     if os.path.isfile(KNOWLEDGE_PATH):
@@ -97,13 +102,13 @@ def load_env_key() -> Optional[str]:
 
 
 class ClaudeWorker:
-    def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None):
+    def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None, variant: str = "a"):
         import anthropic
         key = load_env_key()
         self.client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
         self.model, self.effort, self.log = model, effort, log
         self.system = [
-            {"type": "text", "text": SYSTEM_FIXED},
+            {"type": "text", "text": SYSTEM_FIXED + (CONFIDENCE_RULE_D if variant == "d" else "")},
             {"type": "text", "text": load_knowledge(), "cache_control": {"type": "ephemeral"}},
         ]
         self.generation = 0
@@ -162,10 +167,19 @@ class ClaudeWorker:
 
 
 class FeatureSummarizer:
-    """40 Hz の特徴量を 1 秒ごとに丸め、直近 30 秒分と区間履歴を Claude 向けの要約にする"""
+    """40 Hz の特徴量を 1 秒ごとに丸め、直近 30 秒分と区間履歴を Claude 向けの要約にする
 
-    def __init__(self, window_s: int = 30):
+    variant（A/B 比較・docs/eval-beat.md「先読みの要約 A/B」）:
+      a … 従来（相対レベル＝曲中の最大を 1）
+      b … a ＋ 各行に拍番号・小節番号、直近 8 小節の小節ごとの level 平均
+      d … b と同じ要約＋ system に確信度の基準（CONFIDENCE_RULE_D）
+      c … b の level/onset を固定尺度にする（-60〜0 dBFS を 0〜1・オンセットは生値 / ONSET_FIXED_SCALE）＝曲中最大での正規化をやめる
+    """
+
+    def __init__(self, window_s: int = 30, variant: str = "a"):
         self.window_s = window_s
+        self.variant = variant
+        self.beats = 0
         self.rows: list[dict] = []     # 1 秒ごと
         self._acc: list[dict] = []
         self._sec = -1
@@ -180,23 +194,47 @@ class FeatureSummarizer:
             rms = sum(a["rms_db"] for a in self._acc) / n
             onset = sum(a["onset"] for a in self._acc) / n
             self.max_db = max(self.max_db, rms); self.max_onset = max(self.max_onset, onset)
-            self.rows.append({
-                "t": self._sec,
-                "level": round(max(0.0, min(1.0, 1 + (rms - self.max_db) / 30.0)), 2),   # 最大音量を 1、30 dB 下を 0
-                "bright": int(sum(a["centroid"] for a in self._acc) / n),
-                "onset": round(onset / self.max_onset, 2),                                  # 最大オンセット密度を 1
-            })
+            if self.variant == "c":
+                lv = max(0.0, min(1.0, (rms + 60.0) / 60.0))                               # -60 dBFS を 0、0 dBFS を 1（固定）
+                on = min(1.0, onset / ONSET_FIXED_SCALE)
+            else:
+                lv = max(0.0, min(1.0, 1 + (rms - self.max_db) / 30.0))                    # 最大音量を 1、30 dB 下を 0
+                on = onset / self.max_onset                                                # 最大オンセット密度を 1
+            row = {"t": self._sec, "level": round(lv, 2), "bright": int(sum(a["centroid"] for a in self._acc) / n), "onset": round(on, 2)}
+            if self.variant in ("b", "c", "d"):
+                row["beat"] = self.beats; row["bar"] = self.beats // 4 + 1
+            self.rows.append(row)
             self.rows = self.rows[-self.window_s:]
             self._acc = []
         self._sec = sec
         self._acc.append({"rms_db": feat["rms_db"], "centroid": feat["centroid"], "onset": onset})
 
+    def on_beat(self):
+        self.beats += 1
+
     def summary(self, t: float, tempo_bpm: float, last: Optional[Foresight]) -> dict:
+        if self.variant == "a":
+            return {
+                "now_s": round(t, 1),
+                "tempo_bpm": round(tempo_bpm, 1),
+                "legend": "level=音量（曲中の最大を1・30dB下を0）, bright=スペクトル重心Hz, onset=オンセット密度（最大を1）。1秒ごと・古い→新しい",
+                "last_30s": self.rows,
+                "sections_so_far": self.history[-12:],
+                "previous_answer": json.loads(last.model_dump_json()) if last else None,
+            }
+        lv = ("level=音量（-60dBFSを0・0dBFSを1の固定尺度）, onset=オンセット密度（固定尺度）" if self.variant == "c"
+              else "level=音量（曲中の最大を1・30dB下を0）, onset=オンセット密度（最大を1）")
+        bars: dict[int, list[float]] = {}
+        for r in self.rows:
+            bars.setdefault(r["bar"], []).append(r["level"])
+        last8 = [{"bar": b, "level": round(sum(v) / len(v), 2)} for b, v in sorted(bars.items())][-8:]
         return {
             "now_s": round(t, 1),
             "tempo_bpm": round(tempo_bpm, 1),
-            "legend": "level=音量（曲中の最大を1・30dB下を0）, bright=スペクトル重心Hz, onset=オンセット密度（最大を1）。1秒ごと・古い→新しい",
+            "beat_now": self.beats, "bar_now": self.beats // 4 + 1,
+            "legend": lv + ", bright=スペクトル重心Hz, beat/bar=曲頭からの拍番号・小節番号（4拍=1小節・ポップスの区間は多くが4か8小節単位）。1秒ごと・古い→新しい",
             "last_30s": self.rows,
+            "last_8_bars_level": last8,
             "sections_so_far": self.history[-12:],
             "previous_answer": json.loads(last.model_dump_json()) if last else None,
         }

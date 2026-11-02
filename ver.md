@@ -98,3 +98,7 @@
 **指示:** （入口経由・本人 OK）A/B 比較の走行前に preflight/stage.plt の未コミット変更を記帳
 **変更:** preflight/stage.plt（本人が PrefLight の GUI で 3 灯・0.0.0・11ch・1/12/23 に揃えたシーンの保存分）をコミット。コード変更なし
 ---
+### V202611.023 – 20261103-01:16:51
+**指示:** （入口経由・本人 OK）A/B 比較 3 ラウンドの実装と無人走行。続けて「持てるもの、他の AI、全てを使って全力で」（守り: 製品の判断経路は Claude のみ・他 AI の使用は ai-usage-log に残す）
+**変更:** claude_worker.py に要約の型 a/b/c/d（既定 a＝従来どおり）と確信度の基準 CONFIDENCE_RULE_D、engine.py に採用規則 strict/lowok（既定 strict）、main.py に --summary / --adopt。tools/pseudo_sections.py（仮の正解・2 方式）・ab_run.py（並列・再開可）・ab_diag.py（交絡）・ab_judge.py（符号検定の判定）。90 走行・Claude 応答 1,568 回・失敗 0。敵対レビュア 2 体の指摘で設計を修正（確認は新しい反復で）。結果は docs/eval-beat.md「先読みの要約 A/B」: 総合の勝者なし（暫定）・a/b/c は Claude がほぼ常に low で strict では差が出ない構造・d は Claude 由来の開きを初めて出し偶然の 1.4〜2.3 倍当たるが空振りも増えて F は同等。製品の既定は変えていない
+---
