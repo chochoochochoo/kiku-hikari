@@ -87,9 +87,11 @@ CONFIDENCE_RULE_D = """
 確信度の基準: 曲頭からの小節番号が 8 の倍数に近づき、かつ直近 8 小節の level か onset が上がり続けている（または急に下がった）なら、次の境界の予測は confidence=mid 以上・open_style は none 以外にする。どちらか一方だけなら mid、どちらも無ければ low。区間名が分からなくても、境界の時刻の確信で決めてよい。"""
 
 
-def load_knowledge() -> str:
-    if os.path.isfile(KNOWLEDGE_PATH):
-        with open(KNOWLEDGE_PATH, encoding="utf-8") as f:
+def load_knowledge(path: Optional[str] = None) -> str:
+    """path=知識ファイル（JSON でも Markdown でもそのまま渡す）。既定は knowledge/lighting_knowledge.json（v1）"""
+    path = path or KNOWLEDGE_PATH
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
             return f.read()
     return json.dumps({"note": "知識ファイル未作成。一般的な判断で答える"}, ensure_ascii=False)
 
@@ -109,16 +111,30 @@ def load_env_key() -> Optional[str]:
 BAR_RULE_E = """
 境界の小節: bars_to_boundary に「次の境界が bar_now から何小節先の小節頭か」を答える（返答が届くまで 1 小節ほどかかるので 2 以上が望ましい）。ポップスの区間は多くが 8 小節（ときに 4 小節）単位で、曲頭からの小節番号が 8 の倍数＋1 になる小節頭が境界の候補。いま level や onset が急に変わっているなら、それは既に過ぎた境界なので、その次の境界を答える。seconds_to_boundary も同じ境界を秒で答える。"""
 
+# 「青一定」の直し方（A/B の変種・既定は v1＝知識ファイルどおり。docs/eval-beat.md）
+COLOR_RULES = {
+    "v1": "",
+    # p1 区間の配色: intro/verse の配色（blue 系）に縛らず、曲の感情から基調色を選ぶ
+    "p1": """
+色の決め方（優先）: 曲の基調色は区間名の配色（intro/verse の blue 系）ではなく、valence と arousal から決める（R11〜R14: 明るく速い曲は yellow/orange/white、暗く遅い曲は blue）。blue は暗く遅い曲だけに使う。""",
+    # p2 R20 の緩和: 1 曲 2〜3 色の範囲で、区間が変わるたびに色を変えてよい
+    "p2": """
+色の変え方（優先）: R20「1 曲 1 色」より R01「1 曲 1〜3 色」を優先する。区間（section_now）が変わったら、曲の 2〜3 色のうち別の色に移ってよい。同じ区間が繰り返されたら同じ色に戻す（R02）。""",
+    # p3 e の開き: 開くたびに色が変わるようにする（next_color は color と違う色）
+    "p3": """
+開きの色（優先）: open_style が none 以外のとき、next_color は必ず color と違う色にする（境界で開いた瞬間に色が変わるのが見えるように）。""",
+}
+
 
 class ClaudeWorker:
-    def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None, variant: str = "a"):
+    def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None, variant: str = "a", knowledge: Optional[str] = None, color: str = "v1"):
         import anthropic
         key = load_env_key()
         self.client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
         self.model, self.effort, self.log = model, effort, log
         self.system = [
-            {"type": "text", "text": SYSTEM_FIXED + (CONFIDENCE_RULE_D if variant in ("d", "e", "f") else "") + (BAR_RULE_E if variant in ("e", "f") else "")},
-            {"type": "text", "text": load_knowledge(), "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": SYSTEM_FIXED + (CONFIDENCE_RULE_D if variant in ("d", "e", "f") else "") + (BAR_RULE_E if variant in ("e", "f") else "") + COLOR_RULES[color]},
+            {"type": "text", "text": load_knowledge(knowledge), "cache_control": {"type": "ephemeral"}},
         ]
         self.out_model = ForesightE if variant in ("e", "f") else Foresight
         self.generation = 0

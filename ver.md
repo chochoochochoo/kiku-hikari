@@ -131,3 +131,7 @@
 **指示:** （入口経由）仮説 1（基準時刻を依頼時刻に直す）を実装し、仮説 2・3 は A/B の変種 e/f として実装する。4 曲で回し、区間境界版と照明の変わり目版の両方で採点する。既定は a のまま
 **変更:** engine.on_foresight: seconds_to_boundary を依頼時刻から数える（ClaudeWorker が依頼時刻と bar_now を保持）。e/f の小節数での答えに対応。届いた時点で境界を過ぎていたか（late）をログに出す。claude_worker: ForesightE（bars_to_boundary）と BAR_RULE_E。main: --summary e/f と、f の聞く時刻（句の 2・6 小節目の頭）。tools/ab_h.py（2 通りの採点・偶然との比較・間に合った率）。48 走行・失敗 0。結果は eval-beat.md の「仮説 1〜3 の A/B」: d の F は 0.13→0.26、e は照明の変わり目版でだけ偶然を上回る（p=0.01・多重比較で暫定）、区間境界版はどれも偶然並み
 ---
+### V202611.031 – 20261103-05:00:40
+**指示:** （入口経由・本人判断）既定 a/e は知識ファイル v2 の後に A/B して決める。それまで既定は a のまま。v2 を差し替えるだけで A/B が回る形にし、「青一定」の直し方 3 案を変種として用意する
+**変更:** main.py に --knowledge（知識ファイルのパス）と --color v1/p1/p2/p3（既定 v1。worker の COLOR_RULES を system に足す）。main.py に抜けていた import os を追加。ab_run.py に --knowledge・--logroot と、色つきの腕名（例 e-strict-p1）。ab_h.py に --logroot と、色の種類・変化回数の列。tools/ab_kb.py（v2 の A/B を 1 コマンドで走行→採点）。eval-beat.md に準備の節。短い走行で e+p1+--knowledge と既定の両方が通ることを確認。README の数字は変えていない
+---

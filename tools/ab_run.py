@@ -37,8 +37,9 @@ def truth_for(music: str, song: str, which: str = "timbre") -> list[float]:
     return [round((a + min(t2, key=lambda b: abs(a - b))) / 2, 2) for a in t1 if t2 and min(abs(a - b) for b in t2) <= 2.0]
 
 
-def run_once(music: str, song: str, summary: str, adopt: str, rep: int, seconds: float) -> str:
-    d = os.path.join(OUT, f"{summary}-{adopt}-rep{rep}", song)
+def run_once(music: str, song: str, summary: str, adopt: str, rep: int, seconds: float, color: str = "", knowledge: str = "") -> str:
+    """color=色の変種（p1/p2/p3・空=v1）。knowledge=知識ファイル（空=v1）。腕のフォルダ名は <要約>-<採用>[-<色>]-rep<k>"""
+    d = os.path.join(OUT, f"{summary}-{adopt}{'-' + color if color else ''}-rep{rep}", song)
     for f in glob.glob(os.path.join(d, "*.jsonl")):
         if '"kind":"summary"' in open(f, encoding="utf-8").read():
             return f                                         # 走行済み
@@ -46,6 +47,10 @@ def run_once(music: str, song: str, summary: str, adopt: str, rep: int, seconds:
     os.makedirs(d, exist_ok=True)
     cmd = [sys.executable, "-m", "kiku_hikari.main", "--mode", "claude", "--file", os.path.join(music, f"{song}.wav"), "--no-artnet",
            "--seconds", str(seconds), "--summary", summary, "--adopt", adopt, "--effort", "low", "--logdir", d]
+    if color:
+        cmd += ["--color", color]
+    if knowledge:
+        cmd += ["--knowledge", knowledge]
     print("走行", summary, adopt, f"rep{rep}", song, flush=True)
     subprocess.run(cmd, cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     return glob.glob(os.path.join(d, "*.jsonl"))[0]
@@ -115,13 +120,18 @@ def main():
     ap.add_argument("--songs", default="03_idol_dance,05_mixture_funk,07_guitar_pop_rock"); ap.add_argument("--tol", type=float, default=2.0)
     ap.add_argument("--seconds", type=float, default=80.0); ap.add_argument("--reps", type=int, default=3); ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--summaries", default="a,b,c"); ap.add_argument("--adopts", default="strict,lowok"); ap.add_argument("--rep-from", type=int, default=1)
+    ap.add_argument("--knowledge", default="", help="知識ファイル（空=v1）。v2 の A/B は --logroot も分ける")
+    ap.add_argument("--logroot", default="", help="ログの置き場（既定 logs/ab）。知識ファイルを変えた A/B は別にする（例 logs/ab-v2）")
     ap.add_argument("--arms", help="腕を直接指定（例 d-lowok,a-strict）。指定時は --summaries/--adopts より優先・集計はしない（tools/ab_judge.py で判定）")
     a = ap.parse_args(); songs = a.songs.split(",")
+    global OUT
+    if a.logroot:
+        OUT = os.path.abspath(a.logroot)
     for s_ in songs:
         truth_for(a.music, s_, "agree")                       # 仮正解を先に作る（並列で取り合わない）
     # 総当たり（要約 3 × 採用 2 × 反復 × 曲）を並列で走らせ、ラウンドの判定は後から同じデータで行う
-    pairs = [tuple(x.split("-")) for x in a.arms.split(",")] if a.arms else [(v, ad) for v in a.summaries.split(",") for ad in a.adopts.split(",")]
-    grid = [(v, ad, k, s_) for k in range(a.rep_from, a.rep_from + a.reps) for (v, ad) in pairs for s_ in songs]
+    pairs = [tuple((x.split("-") + ["", ""])[:3]) for x in a.arms.split(",")] if a.arms else [(v, ad, "") for v in a.summaries.split(",") for ad in a.adopts.split(",")]
+    grid = [(v, ad, k, s_, c) for k in range(a.rep_from, a.rep_from + a.reps) for (v, ad, c) in pairs for s_ in songs]
     print(f"走行 {len(grid)} 本（並列 {a.workers}）", flush=True)
     fails = []
 
@@ -129,7 +139,7 @@ def main():
         if len(fails) >= 3:                                   # 失敗が続いたら残りは走らせない
             return
         try:
-            f = run_once(a.music, g[3], g[0], g[1], g[2], a.seconds)
+            f = run_once(a.music, g[3], g[0], g[1], g[2], a.seconds, g[4], a.knowledge)
             sc = score(f, truth_for(a.music, g[3]), a.tol)
             if sc["req"] and sc["err"] > sc["req"] / 2:
                 fails.append((g, sc["err"], sc["req"])); print(f"API の失敗が多い {g} {sc['err']}/{sc['req']}", flush=True)
