@@ -81,3 +81,7 @@
 **指示:** 録画開始／停止今になっちゃった、編集できる？
 **変更:** PrefLight 録画（1,070 秒）から ①②③ を切り出し（bwc-japan2026/video/・リポジトリ外）。3 本のログを logs/public/ に（検査済み）。所見: ③ は 05 の冒頭 60 秒で Claude が intro/低確信のまま→青 hold で地味。次回はサビ入りの区間で撮る
 ---
+### V202611.019 – 20261102-17:43:44
+**指示:** 録画かキー入力の仕組み作れる？（OBS は？）
+**変更:** tools/preflight_capture.py: --find（窓一覧）・--screen（.NET CopyFromScreen の BMP 連番→ffmpeg・20fps・RDP 越しで可）・--record（gdigrab: RDP では黒）・--hotkey（SendInput: 入力デスクトップ外で拒否＝不可）。制約: RDP 切断中は画面が黒（録画不可）。ddagrab は RDP で Operation not permitted
+---
