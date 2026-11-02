@@ -37,3 +37,6 @@
   - 教訓: PrefLight を使う時は **専用の Net（例: Net 3）を切り、同じ PC の他の Art-Net 送信元（DoctorMX の Art-Net 出力）を止める**
 - **16:10 3 灯で動作**: PrefLight の 3 台を系統 1（Art-Net 0.0.0）・11ch・アドレス 1/12/23 に揃え、`--fixtures 3 --node <母艦の LAN アドレス> --universe 0` で 3 本のビームが拍で動いた。
   - 実測で分かった PrefLight の癖: ArtDmx の Net 番号は照合されず、Sub/Univ が一致する全系統に同じデータが配られる（Net 2・Net 3 宛は届かなかった）。送り先は母艦の LAN アドレス（127.0.0.1 宛は届かない時があった）。DoctorMX が起動中は同一 PC 送信元として扱われ、こちらが捨てられる。9ch モード（Fine 無し）の灯体は 5ch 目の色値をシャッターに読んで暗くなる
+
+## 台湾側（本人が持参・2026-11-02 時点）
+- EtherMX 1 台・DoctorMX 1 台・Mac mini・Win10 機。家の PrefLight が使えない時の代替案: Win10 に PrefLight 試用（保存不可・動画 10 秒）＋このコード。いまは未使用

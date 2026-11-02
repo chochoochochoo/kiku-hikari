@@ -53,13 +53,14 @@
 **指示:** （綴）正解づけと的中率の道具
 **変更:** tools/annotate_sections.py（作者が耳で境界を打つ→sections/*.json・Claude には渡さない）、tools/foresight_eval.py（開き vs 正解・予測/救済の別・余計な開き）。.gitignore は sections/* を除外し sections/public/ だけ追跡
 
-## 次回再開ポイント（2026-11-02 14:4x・本人が戻ったら）
-1. 実機: 灯体を 2007 のポート 1/2 に、11Ch・A001、EtherMX の DMX 出力を 40 Hz に → `py -3.12 -m kiku_hikari.main --mode beat --seconds 60` で拍で Pan/Tilt が打てるか目視（PLAN の 11/3 18:00 の関門）
-2. Pan/Tilt の最大速度を見て fixtures.Safety（max_pan_step/max_tilt_step）を詰める
-3. 知識ファイル knowledge/lighting_knowledge.json の「根拠なし」「energy の目安」を本人の判断で上書き
-4. 正解づけ: `py -3.12 tools/annotate_sections.py <wav>` を 3 曲 → `tools/foresight_eval.py` で的中率
-5. ブラインド判定（docs/eval-blind.md）の 3 人の候補・撮影場所
-6. 残り: 動画（字幕は tools/subtitles.py）、README 英語付記、Max コードを別アカウントで適用
+## 次回再開ポイント（2026-11-02 19:4x 更新・『Built with Claude』セッション終了時。3 本に分割: ~/Claude/bwc-japan2026/SESSIONS-BWC.md）
+1. 【開発・本題】③ Claude モードの要約改善: --file（WAV 直接）だと Claude が「intro/verse・低確信」のまま曲 03 のサビ頭（約 68〜76 s）を取り逃がす（logs/public/20261102-180652-claude-song03-rec-3fx.jsonl）。マイク経由の昼の実験では pre_chorus→chorus・slow_close・73 s 開きが出ていた（logs/public/20261102-142830 付近）。疑い: FeatureSummarizer の相対レベル（曲中最大=1）と onset 正規化が --file で効きすぎ／小節数の手がかりが無い。試すこと: 1 秒要約に「拍番号・小節番号」「直近 8 小節の level 平均の推移」を足す、effort medium を比較、conf=low でも open_style≠none なら予測境界を採用
+2. 【開発】Claude なしでも ③ の床が暗い（arousal mid 床 0.3・青）→ PrefLight では青が沈む。ForesightEngine の床を 0.45 に、色ホイールの青は light_blue を優先
+3. 【撮影】PrefLight の 3 灯設定は済み（0.0.0・11ch・1/12/23・横 −2/0/2・高さ 2 m）。録画は `py -3.12 tools/preflight_capture.py --screen <mp4> --seconds N` を先に起動し 2 秒後に main を流す（RDP 接続中のみ）。既存: bwc-japan2026/video/preflight-03-*-3fx-*.mp4（①②③ 各 80 s）。次: 要約改善後に ③ を撮り直し、tools/subtitles.py で字幕
+4. 【監視】AI 生成曲をデモに使えるかのスレッド（薬樹ギン 11/2 19:10）の運営回答を追う。回答次第で公開曲の方針（CC0＋手続き生成）を見直す
+5. 【本人】拒否語リスト ~/.kiku-hikari-denylist.txt に本名・住所・社名を追記（まだ gmail 2 件＋識別子 9 件）。Max 5x コードは別アカウントで適用（既存 Max に当てると置き換わる）。知識ファイルの「根拠なし」を上書き。3 曲の正解づけ（tools/annotate_sections.py）。ブラインド判定の 3 人
+6. 【台湾側の機材】EtherMX・DoctorMX・Mac mini・Win10 機を持参中。PrefLight が家で使えない時の代替（Win10 に PrefLight 試用＋このコード）。いまは不要
+7. 残り: README 英語付記、動画（3 分・字幕・ナレーション日本語）、提出フォーム（CV・11/8 18:00 目標）
 ---
 ### V202611.014 – 20261102-14:41:16
 **指示:** （綴）拍追従の立ち上がり改善を試す
