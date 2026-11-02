@@ -46,12 +46,24 @@ class ForesightEngine(BeatEngine):
         self.color = "white"
         self.next_color = "white"
         self.events = []
+        self.period_s = 0.5         # 直近の拍周期（step で更新）
+        self.phase = 0.0
+        self.last_late = None       # 直近に採った予測が、届いた時点で既に境界を過ぎていたか
 
-    def on_foresight(self, fs, now: float):
+    def on_foresight(self, fs, now: float, asked_at: float | None = None, bar_at_ask: int | None = None):
+        """asked_at=依頼を出した時刻。seconds_to_boundary は Claude が見た要約（依頼の時点）からの秒数なので、そこから数える
+        （2026-11-03 までは届いた時刻から数えていて、往復の遅延 約 2.6 秒ぶん開きが遅れていた・docs/eval-beat.md）"""
         self.fs = fs
         self.color, self.next_color = fs.color.value, fs.next_color.value
+        self.last_late = None
         if fs.open_style.value != "none" and (fs.confidence.value != "low" or self.adopt == "lowok"):
-            self.boundary_at = now + fs.seconds_to_boundary
+            k = getattr(fs, "bars_to_boundary", None)
+            if k is not None and bar_at_ask is not None:      # e/f: 小節数で答えた境界（この拍数の小節頭）
+                target = (bar_at_ask + k - 1) * self.bpb + 1
+                self.boundary_at = now + (target - self.beat_count - self.phase) * self.period_s
+            else:
+                self.boundary_at = (asked_at if asked_at is not None else now) + fs.seconds_to_boundary
+            self.last_late = self.boundary_at < now
         elif fs.confidence.value == "low":
             self.boundary_at = None
 
@@ -73,6 +85,7 @@ class ForesightEngine(BeatEngine):
         if fs is None:
             return {**base, "tame": "none", "opened": False}
         bar_s = period_s * self.bpb
+        self.period_s, self.phase = period_s, phase
         # 開き: 予測境界の直前の小節頭〜直後の小節頭のうち、境界に近い方
         if self.boundary_at is not None and self.open_at is None and now >= self.boundary_at - bar_s:
             beats_into_bar = (self.beat_count - 1) % self.bpb + phase

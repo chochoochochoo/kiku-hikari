@@ -71,6 +71,11 @@ class Foresight(BaseModel):
     reason: str = Field(max_length=80, description="判断の根拠を一文（日本語）")
 
 
+class ForesightE(Foresight):
+    """要約 e/f 用（仮説 2: 秒でなく小節数で先を答えさせる＝往復の遅延に左右されない）"""
+    bars_to_boundary: int = Field(ge=1, le=16, description="次の境界は、いまの小節（bar_now）から何小節先の小節頭か（1〜16）")
+
+
 SYSTEM_FIXED = """あなたはライブの照明オペレーターの判断を肩代わりする。入力は直近 30 秒の音の特徴量の要約（1 秒ごと）と、これまでの区間の履歴。
 仕事は「構造の先読み」: 次の境界（サビ頭・ブレイク・間奏など）が何秒後に来るか、どんな区間か、どう開くかを予測し、いまの色・動き・溜め・感情を決める。
 原則: 位相や拍は Python が担当する。あなたは秒単位の判断だけをする。確信が無いときは confidence を low にし、seconds_to_boundary は大きめにする（早すぎる開きより遅い開きのほうが安全）。
@@ -100,6 +105,10 @@ def load_env_key() -> Optional[str]:
                 return line.split("=", 1)[1].strip().strip('"').strip("'")
     return None
 
+# 要約 e/f 用（仮説 2）: 境界を小節数で答えさせる。いま起きている変化は「過ぎた境界」なので、その次を答えさせる
+BAR_RULE_E = """
+境界の小節: bars_to_boundary に「次の境界が bar_now から何小節先の小節頭か」を答える（返答が届くまで 1 小節ほどかかるので 2 以上が望ましい）。ポップスの区間は多くが 8 小節（ときに 4 小節）単位で、曲頭からの小節番号が 8 の倍数＋1 になる小節頭が境界の候補。いま level や onset が急に変わっているなら、それは既に過ぎた境界なので、その次の境界を答える。seconds_to_boundary も同じ境界を秒で答える。"""
+
 
 class ClaudeWorker:
     def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None, variant: str = "a"):
@@ -108,10 +117,13 @@ class ClaudeWorker:
         self.client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
         self.model, self.effort, self.log = model, effort, log
         self.system = [
-            {"type": "text", "text": SYSTEM_FIXED + (CONFIDENCE_RULE_D if variant == "d" else "")},
+            {"type": "text", "text": SYSTEM_FIXED + (CONFIDENCE_RULE_D if variant in ("d", "e", "f") else "") + (BAR_RULE_E if variant in ("e", "f") else "")},
             {"type": "text", "text": load_knowledge(), "cache_control": {"type": "ephemeral"}},
         ]
+        self.out_model = ForesightE if variant in ("e", "f") else Foresight
         self.generation = 0
+        self.latest_asked = None       # 最新の返答の元になった依頼を出した時刻（perf_counter）＝ seconds_to_boundary の基準
+        self.latest_bar = None         # その依頼時点の bar_now（e/f）
         self.inflight = False
         self.latest: Optional[Foresight] = None
         self.latest_gen = -1
@@ -128,10 +140,10 @@ class ClaudeWorker:
             self.inflight = True
             self.generation += 1
             gen = self.generation
-        threading.Thread(target=self._run, args=(gen, summary), daemon=True).start()
+        threading.Thread(target=self._run, args=(gen, summary, time.perf_counter()), daemon=True).start()
         return True
 
-    def _run(self, gen: int, summary: dict):
+    def _run(self, gen: int, summary: dict, asked_at: float = 0.0):
         t0 = time.perf_counter()
         try:
             resp = self.client.messages.parse(
@@ -140,7 +152,7 @@ class ClaudeWorker:
                 system=self.system,
                 output_config={"effort": self.effort},
                 messages=[{"role": "user", "content": json.dumps(summary, ensure_ascii=False)}],
-                output_format=Foresight,
+                output_format=self.out_model,
             )
             dt = time.perf_counter() - t0
             if resp.stop_reason == "refusal":
@@ -152,6 +164,7 @@ class ClaudeWorker:
             with self._lock:
                 if gen > self.latest_gen:          # 古い世代の返答は捨てる
                     self.latest, self.latest_gen, self.latest_at = fs, gen, time.perf_counter()
+                    self.latest_asked, self.latest_bar = asked_at, summary.get("bar_now")
                 self.last_latency = dt
             if self.log:
                 self.log.event("claude_resp", gen=gen, latency=round(dt, 3), model=self.model,
@@ -173,6 +186,8 @@ class FeatureSummarizer:
       a … 従来（相対レベル＝曲中の最大を 1）
       b … a ＋ 各行に拍番号・小節番号、直近 8 小節の小節ごとの level 平均
       d … b と同じ要約＋ system に確信度の基準（CONFIDENCE_RULE_D）
+      e … d ＋ 境界を小節数（bars_to_boundary）でも答えさせる（仮説 2）
+      f … e ＋ 依頼を句の 2・6 小節目の頭に出す（境界の候補の 3 小節前・仮説 3。main.py）
       c … b の level/onset を固定尺度にする（-60〜0 dBFS を 0〜1・オンセットは生値 / ONSET_FIXED_SCALE）＝曲中最大での正規化をやめる
     """
 
@@ -201,7 +216,7 @@ class FeatureSummarizer:
                 lv = max(0.0, min(1.0, 1 + (rms - self.max_db) / 30.0))                    # 最大音量を 1、30 dB 下を 0
                 on = onset / self.max_onset                                                # 最大オンセット密度を 1
             row = {"t": self._sec, "level": round(lv, 2), "bright": int(sum(a["centroid"] for a in self._acc) / n), "onset": round(on, 2)}
-            if self.variant in ("b", "c", "d"):
+            if self.variant in ("b", "c", "d", "e", "f"):
                 row["beat"] = self.beats; row["bar"] = self.beats // 4 + 1
             self.rows.append(row)
             self.rows = self.rows[-self.window_s:]

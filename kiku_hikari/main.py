@@ -85,7 +85,7 @@ def main(argv=None):
     ap.add_argument("--every", type=float, default=4.0, help="claude モード: 要約を送る間隔（秒）")
     ap.add_argument("--model", default=None, help="claude モード: モデル ID（既定 claude-opus-5-5）")
     ap.add_argument("--effort", default="low")
-    ap.add_argument("--summary", choices=["a", "b", "c", "d"], default="a", help="claude モード: 要約の形（A/B 比較用・claude_worker.FeatureSummarizer）")
+    ap.add_argument("--summary", choices=["a", "b", "c", "d", "e", "f"], default="a", help="claude モード: 要約の形（A/B 比較用・claude_worker.FeatureSummarizer）")
     ap.add_argument("--adopt", choices=["strict", "lowok"], default="strict", help="claude モード: 確信度 low の予測を採るか（A/B 比較用）")
     ap.add_argument("--bpm", type=float, default=None, help="固定テンポ（拍追従を使わない退避策）")
     ap.add_argument("--node"); ap.add_argument("--universe", type=int, default=None); ap.add_argument("--address", type=int, default=1)
@@ -136,7 +136,7 @@ def main(argv=None):
         worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log, variant=a.summary)
         summarizer = FeatureSummarizer(variant=a.summary)
         log.event("claude_config", model=worker.model, effort=a.effort, every=a.every, summary=a.summary, adopt=a.adopt)
-    next_claude = 0.0; seen_gen = -1
+    next_claude = 0.0; seen_gen = -1; f_due = False
     detector = ChangeDetector() if a.mode in ("claude", "beat", "rules") and not a.no_audio else None
 
     audio = tracker = None
@@ -197,16 +197,21 @@ def main(argv=None):
 
             if worker is not None:
                 tnow = now - t_start
-                if tnow >= next_claude and tnow >= 3.0:
+                if a.summary == "f":   # 仮説 3: 句の 2・6 小節目の頭（境界の候補の 3 小節前）で聞く。拍が取れない間と 10 秒空いた時は従来どおり
+                    due = (f_due or tnow >= next_claude + 6.0) and tnow >= 3.0
+                else:
+                    due = tnow >= next_claude and tnow >= 3.0
+                if due:
+                    f_due = False          # f: 前の依頼がまだ返っていなければ、この回は見送る（遅れて聞いても意味がない）
                     summ = summarizer.summary(tnow, st["tempo_bpm"], worker.latest)
                     if worker.request(summ):
                         log.event("claude_req", gen=worker.generation, rows=len(summ["last_30s"]))
                     next_claude = tnow + a.every
                 if worker.latest_gen > seen_gen:
                     seen_gen = worker.latest_gen
-                    engine.on_foresight(worker.latest, now)
+                    engine.on_foresight(worker.latest, now, asked_at=worker.latest_asked, bar_at_ask=worker.latest_bar)
                     summarizer.history.append({"t": round(tnow, 1), "section": worker.latest.section_now.value})
-                    log.event("foresight_applied", gen=seen_gen, boundary_in=round(engine.boundary_at - now, 1) if engine.boundary_at else None)
+                    log.event("foresight_applied", gen=seen_gen, boundary_in=round(engine.boundary_at - now, 1) if engine.boundary_at else None, late=engine.last_late)
             if a.mode == "direct":
                 pan = 0.5 + 0.25 * math.sin((now - t_start) * 2 * math.pi / 8)
                 params = {"pan": pan, "tilt": 0.55, "color": pick_color(feat["centroid"]), "dimmer": level, "shutter": "open", "speed": 0.0}
@@ -215,6 +220,8 @@ def main(argv=None):
                     engine.on_beat(); beats += 1
                     if summarizer is not None:
                         summarizer.on_beat()
+                        if summarizer.beats % 16 in (4, 12):   # f: 小節 2・6・10・14… の頭
+                            f_due = True
                     log.event("beat", n=beats, tempo_bpm=st["tempo_bpm"], confidence=st["confidence"])
                 period_s = 60.0 / st["tempo_bpm"] if st["tempo_bpm"] else 0.5
                 if worker is not None:
