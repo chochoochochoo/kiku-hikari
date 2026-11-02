@@ -101,6 +101,8 @@ def main(argv=None):
     sender = None
     if not a.no_artnet:
         node_ip, universe = a.node, a.universe
+        if node_ip is not None and universe is None:
+            universe = 0  # 送り先を直接指定した時は探索しない（PrefLight が 6454 を占有している時のため）
         if node_ip is None or universe is None:
             nodes = artnet.discover()
             log.event("artnet_discover", nodes=[{"ip": n.ip, "mac": n.mac, "outputs": n.outputs} for n in nodes])

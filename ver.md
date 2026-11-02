@@ -65,3 +65,7 @@
 **指示:** （綴）拍追従の立ち上がり改善を試す
 **変更:** 立ち上がり重み 0.6 の実験は 10 曲評価で悪化（docs/eval-beat.md に記録）→ beat.py は元に戻した（コード変更なし）
 ---
+### V202611.015 – 20261102-15:13:36
+**指示:** いま台湾なので物理的な接続できない→ PrefLight（kuwatec）で対応しよう（本人）
+**変更:** docs/hardware-notes.md に PrefLight の事実（Stinger Spot がライブラリにある・Art-Net 入力・6454 占有・動画記録）。main.py: --node 指定時は探索せず Universe 0 を既定に。preflight/ フォルダ（シーンは本人が GUI で作成）
+---

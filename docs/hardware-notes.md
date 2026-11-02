@@ -25,3 +25,9 @@
 - 2007 = 10.106.195.239: ポート 1・2 = 出力 Universe 0（Net 0/Sub 0）、ポート 3・4 = 出力 Universe 2・3 → **灯体はポート 1 か 2 に挿す**（Universe 0 に送っている）
 - 2008 = 10.106.195.240: ポート 1・2 = 入力（Net 1 / Univ 1）、ポート 3・4 = 出力 Universe 2・3（本件では未使用）
 - サブネット 255.0.0.0・DHCP なし・Unicast 使用なし・ArtSync なし・設定後消灯・DMX 出力繰返し **29 Hz → 40 Hz に上げる依頼**（こちらは 40 Hz 送信）・Art-Net 送信繰返し 0.1 秒
+
+## PrefLight（kuwatec の照明ビジュアライザ・母艦に導入済み・登録済み）— 実機が無い間の「画面の灯体」
+- `C:\Program Files\PrefLight\PrefLight.exe`。灯体ライブラリに American DJ「Stinger Spot」あり（`SupportFiles/Instruments/AmericanDJ/Stinger Spot`・制御 cMod/cPan/cTlt/cCol/cGob/cSht/cDim/cSpd/cFnc/cDmC ＝ 9/11ch）
+- 入力: DoctorMX / Art-Net / sACN / OSC（ヘルプ「DMX 接続...」）。Art-Net は UDP 6454 を PrefLight が占有するので、こちらの ArtPoll 探索は PrefLight 起動中は使わず `--node 127.0.0.1`（または母艦の LAN IP）で直接送る。ArtPollReply には応える
+- 記録: ファイルメニュー「静止画として記録」「動画に記録」→ `Documents\PrefLight Capture\`（登録済みなので 10 秒制限なし）
+- シーン: `preflight/stage.plt`（本人が GUI で作成: Stinger Spot ×1・アドレス 1・11ch・Universe 0）
