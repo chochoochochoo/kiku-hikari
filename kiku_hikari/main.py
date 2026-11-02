@@ -1,29 +1,35 @@
-"""kiku-hikari v0 — 音を聴いて灯体が光る最小の通し（11/2 の到達点）。
+"""kiku-hikari — 音を聴いてムービングライトが光る（40 Hz の速い輪）。
 
-  音声入力（25 ms）→ 特徴量（RMS・重心・低域フラックス）→ 40 Hz で DMX を作る → Art-Net → EtherMX → Stinger Spot
-  すべてを 1 本の JSONL ログに時刻つきで残す。
+  音声入力（25 ms）→ 特徴量 ＋ 自前の拍追従 → モーションエンジン → Stinger Spot の DMX → Art-Net → EtherMX
+  すべてを 1 本の JSONL ログに時刻つきで残す（拍・テンポ・位相・DMX・遅れ）。
 
-この段階の対応づけは「音量→明るさ・明るさ(重心)→色」の直結（計画の比較 3 段のうち ①/② の土台）。拍追従と Claude は 11/3〜。
+モード:
+  direct … 音量→明るさ・重心→色の直結（v0・11/2）
+  beat   … 拍連動（計画の比較 3 段の ①）。--bpm N で固定テンポ（拍追従の退避策）。拍頭は Space キーで合わせ直せる（Windows）
 使い方:
-  py -3.12 -m kiku_hikari.main --seconds 20                 # ノードを探して送る
-  py -3.12 -m kiku_hikari.main --node 10.106.195.239 --universe 0 --address 1
-  py -3.12 -m kiku_hikari.main --no-audio --seconds 10      # 音なし（合成信号）で結線だけ確認
+  py -3.12 -m kiku_hikari.main --mode beat --seconds 60
+  py -3.12 -m kiku_hikari.main --mode beat --bpm 120 --seconds 60      # 固定テンポ
+  py -3.12 -m kiku_hikari.main --mode direct --no-audio --seconds 10   # 音なしで結線だけ
+  py -3.12 -m kiku_hikari.main --mode beat --play path.wav             # 手元の WAV をヘッドホンから鳴らしてマイクで聴く（自己試験）
 """
 from __future__ import annotations
 
 import argparse
 import math
+import sys
 import time
 
+import numpy as np
+
 from . import artnet
+from .engine import BeatEngine
 from .fixtures import StingerSpot11
 from .runlog import RunLog
 
-FRAME = 1 / 40.0  # 25 ms
+FRAME = 1 / 40.0
 
 
 def pick_color(centroid_hz: float) -> str:
-    """スペクトル重心→色（暫定の直結表。暗い音＝赤系、明るい音＝青系）"""
     if centroid_hz < 300:
         return "red"
     if centroid_hz < 700:
@@ -37,86 +43,154 @@ def pick_color(centroid_hz: float) -> str:
     return "blue"
 
 
+class FixedTempo:
+    """退避策: 固定 BPM。Space で拍頭を合わせ直す（位相だけ・周期は固定）"""
+
+    def __init__(self, bpm: float):
+        self.period_s = 60.0 / bpm
+        self.tempo_bpm = bpm
+        self.t_last = time.perf_counter()
+        self.phase = 0.0
+        self.confidence = 1.0
+
+    def tap(self, t: float):
+        self.t_last = t
+
+    def tick(self, t: float) -> bool:
+        beat = False
+        while t - self.t_last >= self.period_s:
+            self.t_last += self.period_s
+            beat = True
+        self.phase = (t - self.t_last) / self.period_s
+        return beat
+
+
+def space_pressed() -> bool:
+    if sys.platform != "win32":
+        return False
+    import msvcrt
+    hit = False
+    while msvcrt.kbhit():
+        if msvcrt.getwch() == " ":
+            hit = True
+    return hit
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--node", help="Art-Net ノードの IP（省略時は ArtPoll で探す）")
-    ap.add_argument("--universe", type=int, default=None, help="Port-Address（省略時はノードの出力ポートの値）")
-    ap.add_argument("--address", type=int, default=1, help="灯体の DMX 開始アドレス")
-    ap.add_argument("--seconds", type=float, default=15.0)
-    ap.add_argument("--no-audio", action="store_true", help="音声入力なし（合成信号）")
-    ap.add_argument("--floor-db", type=float, default=-55.0, help="この音量以下は暗い")
-    ap.add_argument("--ceil-db", type=float, default=-15.0, help="この音量以上で最大")
-    ap.add_argument("--logdir", default="logs")
+    ap.add_argument("--mode", choices=["direct", "beat"], default="beat")
+    ap.add_argument("--bpm", type=float, default=None, help="固定テンポ（拍追従を使わない退避策）")
+    ap.add_argument("--node"); ap.add_argument("--universe", type=int, default=None); ap.add_argument("--address", type=int, default=1)
+    ap.add_argument("--seconds", type=float, default=30.0)
+    ap.add_argument("--no-audio", action="store_true")
+    ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす")
+    ap.add_argument("--out-device", default="Realtek", help="--play の出力デバイス名の一部（WASAPI）")
+    ap.add_argument("--floor-db", type=float, default=-55.0); ap.add_argument("--ceil-db", type=float, default=-15.0)
+    ap.add_argument("--logdir", default="logs"); ap.add_argument("--no-artnet", action="store_true", help="DMX を送らない（解析だけ）")
     a = ap.parse_args(argv)
 
-    log = RunLog(a.logdir, tag="v0")
-    node_ip, universe = a.node, a.universe
-    if node_ip is None or universe is None:
-        nodes = artnet.discover()
-        log.event("artnet_discover", nodes=[{"ip": n.ip, "mac": n.mac, "outputs": n.outputs} for n in nodes])
-        outs = [n for n in nodes if n.outputs]
-        if not outs:
-            print("Art-Net の出力ノードが見つからない（ArtPollReply なし）。--node で指定してください")
-            log.close(); return 2
-        node_ip = node_ip or outs[0].ip
-        universe = universe if universe is not None else outs[0].outputs[0]
-    print(f"送り先 {node_ip} universe {universe} address {a.address} ログ {log.path}")
-    log.event("config", node=node_ip, universe=universe, address=a.address, audio=not a.no_audio)
+    log = RunLog(a.logdir, tag=a.mode)
+    sender = None
+    if not a.no_artnet:
+        node_ip, universe = a.node, a.universe
+        if node_ip is None or universe is None:
+            nodes = artnet.discover()
+            log.event("artnet_discover", nodes=[{"ip": n.ip, "mac": n.mac, "outputs": n.outputs} for n in nodes])
+            outs = [n for n in nodes if n.outputs]
+            if not outs:
+                print("Art-Net の出力ノードが見つからない。--node で指定するか --no-artnet"); log.close(); return 2
+            node_ip = node_ip or outs[0].ip
+            universe = universe if universe is not None else outs[0].outputs[0]
+        sender = artnet.ArtNetSender(node_ip, universe)
+        print(f"送り先 {node_ip} universe {universe} address {a.address}")
+        log.event("config", node=node_ip, universe=universe, address=a.address, mode=a.mode, bpm=a.bpm, audio=not a.no_audio)
+    else:
+        log.event("config", mode=a.mode, bpm=a.bpm, audio=not a.no_audio, artnet=False)
+    print(f"ログ {log.path}")
 
-    sender = artnet.ArtNetSender(node_ip, universe)
     fx = StingerSpot11(address=a.address)
     dmx = bytearray(512)
+    engine = BeatEngine()
 
-    audio = None
+    audio = tracker = None
     if not a.no_audio:
         from .audio_in import AudioIn
+        from .beat import BeatTracker
         audio = AudioIn().start()
+        tracker = BeatTracker() if a.bpm is None else None
         log.event("audio_start", device=audio.device, fs=audio.fs, block=audio.block)
+    fixed = FixedTempo(a.bpm) if a.bpm else None
 
-    t_start = time.perf_counter()
-    next_t = t_start
-    frames = 0
+    player = None
+    if a.play:
+        import sounddevice as sd
+        import soundfile as sf
+        y, fs = sf.read(a.play, dtype="float32", always_2d=True)
+        dev = next(i for i, d in enumerate(sd.query_devices()) if d["max_output_channels"] >= 2 and a.out_device in d["name"] and "WASAPI" in sd.query_hostapis()[d["hostapi"]]["name"])
+        sd.play(y, fs, device=dev)
+        player = sd
+        log.event("play", path=a.play, device=dev)
+
+    t_start = time.perf_counter(); next_t = t_start; t_prev = t_start
+    frames = beats = 0
     feat = {"rms_db": -80.0, "centroid": 0.0, "flux_low": 0.0, "peak": 0.0}
-    level = 0.0
+    level = 0.0; st = {"tempo_bpm": 0.0, "phase": 0.0, "beat": False, "confidence": 0.0}
     try:
         while time.perf_counter() - t_start < a.seconds:
-            now = time.perf_counter()
-            # 音声: たまったブロックを全部消費して最新の特徴量にする（遅れを溜めない）
+            now = time.perf_counter(); dt = now - t_prev; t_prev = now
+            beat = False
             if audio is not None:
                 n = 0
                 while not audio.q.empty():
                     x = audio.q.get_nowait(); feat = audio.features(x); n += 1
+                    if tracker is not None:
+                        st = tracker.process(x)
+                        beat = beat or st["beat"]
                 if n:
                     log.event("audio", **{k: float(v) for k, v in feat.items()}, blocks=n)
             else:
                 tt = now - t_start
                 feat = {"rms_db": -35 + 20 * math.sin(tt * 2 * math.pi / 4), "centroid": 400 + 2600 * (0.5 + 0.5 * math.sin(tt * 0.7)), "flux_low": 0.0, "peak": 0.0}
-            # 直結の対応づけ: 音量→明るさ（立ち上がり速く・減衰ゆっくり）、重心→色、音量で Pan をゆっくり振る
-            target = (feat["rms_db"] - a.floor_db) / (a.ceil_db - a.floor_db)
-            target = max(0.0, min(1.0, target))
+            if fixed is not None:
+                if space_pressed():
+                    fixed.tap(now); log.event("tap")
+                beat = fixed.tick(now)
+                st = {"tempo_bpm": fixed.tempo_bpm, "phase": fixed.phase, "beat": beat, "confidence": 1.0}
+            target = max(0.0, min(1.0, (feat["rms_db"] - a.floor_db) / (a.ceil_db - a.floor_db)))
             level = max(target, level * 0.93)
-            pan = 0.5 + 0.25 * math.sin((now - t_start) * 2 * math.pi / 8)
-            written = fx.render(dmx, pan=pan, tilt=0.55, color=pick_color(feat["centroid"]), dimmer=level, shutter="open", speed=0.0)
-            sender.send(dmx)
+
+            if a.mode == "direct":
+                pan = 0.5 + 0.25 * math.sin((now - t_start) * 2 * math.pi / 8)
+                params = {"pan": pan, "tilt": 0.55, "color": pick_color(feat["centroid"]), "dimmer": level, "shutter": "open", "speed": 0.0}
+            else:
+                if beat:
+                    engine.on_beat(); beats += 1
+                    log.event("beat", n=beats, tempo_bpm=st["tempo_bpm"], confidence=st["confidence"])
+                period_s = 60.0 / st["tempo_bpm"] if st["tempo_bpm"] else 0.5
+                params = engine.step(dt, st["phase"], period_s, level)
+            written = fx.render(dmx, **params)
+            if sender is not None:
+                sender.send(dmx)
             frames += 1
-            if frames % 8 == 0:  # 5 Hz でログ（毎フレームは多すぎる）
-                log.event("dmx", frame=frames, **written, level=round(level, 3))
+            if frames % 8 == 0:
+                log.event("dmx", frame=frames, **written, level=round(level, 3), phase=round(st["phase"], 3), tempo_bpm=st["tempo_bpm"])
             next_t += FRAME
             sleep = next_t - time.perf_counter()
             if sleep > 0:
                 time.sleep(sleep)
             else:
-                next_t = time.perf_counter()  # 遅れたら追いつかずに刻み直す
-                log.event("late", by_ms=round(-sleep * 1000, 1))
+                next_t = time.perf_counter(); log.event("late", by_ms=round(-sleep * 1000, 1))
     finally:
-        sender.blackout()
-        log.event("blackout")
+        if sender is not None:
+            sender.blackout(); sender.close(); log.event("blackout")
+        if player is not None:
+            player.stop()
         if audio is not None:
             audio.stop(); log.event("audio_stop", dropped=audio.dropped)
-        sender.close()
-        log.event("summary", frames=frames, seconds=round(time.perf_counter() - t_start, 2), fps=round(frames / max(1e-6, time.perf_counter() - t_start), 1))
+        el = time.perf_counter() - t_start
+        log.event("summary", frames=frames, beats=beats, seconds=round(el, 2), fps=round(frames / max(1e-6, el), 1), tempo_bpm=st["tempo_bpm"])
         log.close()
-    print(f"frames {frames} / {a.seconds}s  log {log.path}")
+    print(f"frames {frames} beats {beats} tempo {st['tempo_bpm']} / {a.seconds}s  log {log.path}")
     return 0
 
 

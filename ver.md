@@ -21,3 +21,7 @@
 **指示:** PLAN §7 の 11/2 分（音声入力・ログ基盤・Art-Net 疎通）着手して（本人不在・綴が進める）
 **変更:** kiku_hikari/ パッケージ新設: artnet.py（ArtPoll 探索・ArtDmx 送信）、audio_in.py（WASAPI 48 kHz 25 ms・RMS/重心/低域フラックス）、runlog.py（JSONL・単調時計）、fixtures.py（Stinger Spot 11ch 表＋安全弁）、main.py（v0: 40 Hz 直結）。Art-Net ノード 2 台を発見（.239 が Universe 0 出力）。20 秒の通しログを logs/public/ に（検査済み）。docs/hardware-notes.md・docs/ai-usage-log.md・README「いま動くもの」
 ---
+### V202611.006 – 20261102-14:52
+**指示:** （本人不在・綴が 11/3 分へ前倒し）拍追従・40 Hz エンジン・拍で Pan/Tilt
+**変更:** kiku_hikari/beat.py（因果の拍追従: 対数スペクトルのフラックス→自己相関＋倍音加算→櫛で位相合わせ・位相リセットなし）、engine.py（拍で Pan 左右・Tilt 2 拍・明るさパルス）、main.py を --mode direct/beat・--bpm 固定＋Space タップ・--play 自己試験・--no-artnet に拡張。tools/beat_eval.py と docs/eval-beat.md（10 曲の表・指定 BPM は当てにならない）。自己試験ログを logs/public/ に（検査済み）
+---
