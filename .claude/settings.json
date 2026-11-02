@@ -2,14 +2,22 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/tools/secret_scan.py\" --hook"
+            "command": "sh \"$CLAUDE_PROJECT_DIR/tools/secret_scan.sh\" --hook"
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Bash(git commit --no-verify*)",
+      "Bash(git push --no-verify*)",
+      "Bash(git push -f*)",
+      "Bash(git push --force*)"
     ]
   }
 }
