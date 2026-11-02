@@ -102,3 +102,7 @@
 **指示:** （入口経由・本人 OK）A/B 比較 3 ラウンドの実装と無人走行。続けて「持てるもの、他の AI、全てを使って全力で」（守り: 製品の判断経路は Claude のみ・他 AI の使用は ai-usage-log に残す）
 **変更:** claude_worker.py に要約の型 a/b/c/d（既定 a＝従来どおり）と確信度の基準 CONFIDENCE_RULE_D、engine.py に採用規則 strict/lowok（既定 strict）、main.py に --summary / --adopt。tools/pseudo_sections.py（仮の正解・2 方式）・ab_run.py（並列・再開可）・ab_diag.py（交絡）・ab_judge.py（符号検定の判定）。90 走行・Claude 応答 1,568 回・失敗 0。敵対レビュア 2 体の指摘で設計を修正（確認は新しい反復で）。結果は docs/eval-beat.md「先読みの要約 A/B」: 総合の勝者なし（暫定）・a/b/c は Claude がほぼ常に low で strict では差が出ない構造・d は Claude 由来の開きを初めて出し偶然の 1.4〜2.3 倍当たるが空振りも増えて F は同等。製品の既定は変えていない
 ---
+### V202611.024 – 20261103-01:34:59
+**指示:** （入口経由・本人判断）既定 d/a は耳の正解づけの後に決める。annotate_sections.py を迷わず使える形に・正解を入れたら走り直し無しで d/a を再判定する 1 行・既定は a のまま
+**変更:** tools/annotate_sections.py: 区間名を毎回聞くのをやめ「文字＋Enter」の 1 回入力に（v/p/c/b/k/i/o）・u で取り消し・Enter で再生開始・既定の出力デバイス（リモートデスクトップ越しでも手元で鳴る）・反応の遅れ 0.2 秒を引く・生成時の構成を参考表示・保存先はリポジトリの sections/（.gitignore 済み）。ab_run.truth_for / ab_judge.py に --truth human。無音 WAV で打鍵・取り消し・保存を確認、仮正解を置いて判定が仮正解の結果と一致することを確認（確認後に削除）。製品コードは変えていない
+---

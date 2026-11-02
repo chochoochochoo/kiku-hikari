@@ -3,7 +3,8 @@
 #   「暫定勝者」と言うのは: 組の 8/9 以上で勝ち（同点は負け扱い）、かつ Claude 由来の的中が基準より多く、かつ 3 曲すべてで曲別平均 F が基準以上。
 #   その判定が、許容幅 1.5/2.0/2.5 秒 × 仮正解 timbre/agree の 6 通りすべてで同じ時だけ「頑健」
 #   採点対象の正解は、最初の Claude 応答が届く 12 秒より後の切れ目だけ（誰も届かない点で全腕を薄めない）
-# 使い方: py -3.12 tools/ab_judge.py --music <wav のフォルダ> --win d-lowok --base a-strict --reps 4,5,6
+# 使い方: py -3.12 tools/ab_judge.py --music <wav のフォルダ> --win d-strict --base a-strict [--reps 4,5,6] [--truth human]
+#   --truth human: 作者の耳の正解（sections/<曲>.json）で判定。走り直しは不要（既存ログを採点し直すだけ）
 import argparse
 import glob
 import math
@@ -49,15 +50,15 @@ def judge(music, win, base, reps, songs, which, tol):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--music", required=True); ap.add_argument("--win", required=True); ap.add_argument("--base", default="a-strict")
-    ap.add_argument("--reps", default="4,5,6"); ap.add_argument("--songs", default="03_idol_dance,05_mixture_funk,07_guitar_pop_rock")
+    ap.add_argument("--reps", default="4,5,6"); ap.add_argument("--truth", choices=["pseudo", "human"], default="pseudo", help="human=作者の耳の正解で判定（tools/annotate_sections.py）"); ap.add_argument("--songs", default="03_idol_dance,05_mixture_funk,07_guitar_pop_rock")
     a = ap.parse_args(); reps = [int(x) for x in a.reps.split(",")]; songs = a.songs.split(",")
     res = []
-    for which in ("timbre", "agree"):
+    for which in (("human",) if a.truth == "human" else ("timbre", "agree")):
         for tol in (1.5, 2.0, 2.5):
             j = judge(a.music, a.win, a.base, reps, songs, which, tol); res.append(j["ok"])
             ps = " ".join(f"{s[:2]} {w:.2f}/{b:.2f}" for s, (w, b) in j["per_song"].items())
             print(f"{which:6} ±{tol}: 勝ち {j['wins']}/{j['n']}（p={j['p']}）Claude由来の的中 {j['pred_hit'][0]} 対 {j['pred_hit'][1]}｜曲別F {ps}｜{'○' if j['ok'] else '×'}")
-    verdict = "暫定勝者（頑健）" if all(res) else ("暫定勝者（条件つき・" + f"{sum(res)}/6 通り）" if any(res) else "差なし")
+    verdict = ("勝者（頑健）" if a.truth == "human" else "暫定勝者（頑健）") if all(res) else (f"条件つきの勝者（{sum(res)}/{len(res)} 通り）" if any(res) else "差なし")
     print(f"判定: {a.win} 対 {a.base} → {verdict}")
 
 

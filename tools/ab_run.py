@@ -24,7 +24,12 @@ def _truth_file(music: str, song: str, kind: str) -> list[float]:
 
 
 def truth_for(music: str, song: str, which: str = "timbre") -> list[float]:
-    """timbre=主の仮正解 / agree=音色系と勢い系の 2 方式が ±2 秒で一致した切れ目だけ（少ないが信頼度が高い）"""
+    """timbre=主の仮正解 / agree=音色系と勢い系の 2 方式が ±2 秒で一致した切れ目だけ（少ないが信頼度が高い）/ human=作者の耳の正解（tools/annotate_sections.py の sections/<曲>.json）"""
+    if which == "human":
+        p = os.path.join(ROOT, "sections", f"{song}.json")
+        if not os.path.isfile(p):
+            sys.exit(f"耳の正解がまだ無い: {p}（py -3.12 tools/annotate_sections.py で作る）")
+        return [b["t"] for b in json.load(open(p, encoding="utf-8"))["boundaries"]]
     t1 = _truth_file(music, song, "timbre")
     if which == "timbre":
         return t1
