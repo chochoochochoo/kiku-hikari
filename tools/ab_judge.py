@@ -18,11 +18,22 @@ sys.stdout.reconfigure(encoding="utf-8")
 SONGS = ["03_idol_dance", "05_mixture_funk", "07_guitar_pop_rock", "11_enka"]   # 11_enka=演歌風（曲調の幅出し・2026-11-03 追加）
 
 
+THIN = 0.0   # --thin: これより狭い間隔の正解は間引く（密に打った正解で「どの開きも当たる」のを防ぐ）
+
+
+def thin(ts, gap):
+    out = []
+    for t in sorted(ts):
+        if not out or t - out[-1] >= gap:
+            out.append(t)
+    return out
+
+
 def f_of(arm, rep, song, music, which, tol):
     fs = [x for x in glob.glob(os.path.join(OUT, f"{arm}-rep{rep}", song, "*.jsonl")) if '"kind":"summary"' in open(x, encoding="utf-8").read()]
     if not fs:
         return None
-    truth = [t for t in truth_for(music, song, which) if t >= 12.0]
+    truth = thin([t for t in truth_for(music, song, which) if t >= 12.0], THIN)
     sc = score(fs[0], truth, tol)
     sc["F"] = 2 * sc["hit"] / max(1, sc["truth"] + sc["opens"])
     sc["F_pred"] = 2 * sc["pred_hit"] / max(1, sc["truth"] + sc["pred_opens"])
@@ -51,8 +62,8 @@ def judge(music, win, base, reps, songs, which, tol):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--music", required=True); ap.add_argument("--win", required=True); ap.add_argument("--base", default="a-strict")
-    ap.add_argument("--reps", default="4,5,6"); ap.add_argument("--truth", choices=["pseudo", "human"], default="pseudo", help="human=作者の耳の正解で判定（tools/annotate_sections.py）"); ap.add_argument("--songs", default=",".join(SONGS), help="既定=3 曲＋11_enka（走行ログが無い曲は自動で外す）")
-    a = ap.parse_args(); reps = [int(x) for x in a.reps.split(",")]; songs = a.songs.split(",")
+    ap.add_argument("--reps", default="4,5,6"); ap.add_argument("--truth", choices=["pseudo", "human"], default="pseudo", help="human=作者の耳の正解で判定（tools/annotate_sections.py）"); ap.add_argument("--thin", type=float, default=0.0, help="正解の点をこの秒数より狭い間隔なら間引く（例 6）"); ap.add_argument("--songs", default=",".join(SONGS), help="既定=3 曲＋11_enka（走行ログが無い曲は自動で外す）")
+    a = ap.parse_args(); global THIN; THIN = a.thin; reps = [int(x) for x in a.reps.split(",")]; songs = a.songs.split(",")
     songs = [s for s in songs if glob.glob(os.path.join(OUT, f"{a.base}-rep{reps[0]}", s, "*.jsonl"))] or songs   # まだ走っていない曲は外す
     res = []
     for which in (("human",) if a.truth == "human" else ("timbre", "agree")):
