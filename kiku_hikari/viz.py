@@ -39,6 +39,7 @@ class Viz:
     def _run(self):
         import tkinter as tk
         root = tk.Tk(); root.title(self.title); root.configure(bg="#000")
+        root.attributes("-topmost", True); root.geometry("+60+60")  # 他の窓の後ろに隠れないように
         W, H = 720, 480
         cv = tk.Canvas(root, width=W, height=H, bg="#000", highlightthickness=0); cv.pack()
         text = tk.Label(root, text="", fg="#ccc", bg="#000", font=("Yu Gothic UI", 11), justify="left", anchor="w"); text.pack(fill="x")

@@ -41,3 +41,7 @@
 **指示:** （本人不在・綴）疑似モードと README の本文。本人から EtherMX の設定画面（2007=.239 出力 U0/U0/U2/U3、2008=.240 入力/入力/U2/U3・DMX 出力 29 Hz）
 **変更:** audio_in.FileIn（WAV を実時間で直接入力）、viz.py（tkinter の仮想灯体）、main.py に --file / --viz。README を提出形に書き直し（誰のためか／Claude の役割／他モデル／11/2 前の準備／Claude Code で何を作ったか／いま動くもの／審査員向けセットアップ／残り）。docs/hardware-notes.md に EtherMX 設定（DMX 出力 29→40 Hz の依頼）
 ---
+### V202611.011 – 20261102-14:34:48
+**指示:** （綴）仮想灯体の窓が他の窓の後ろに隠れる→最前面に。判定シートの雛形
+**変更:** viz.py topmost＋位置指定（スクショで表示を確認: 青い円・拍/テンポ/位相/色/明るさ・Claude の判断行）。docs/blind-sheet.csv。shots/snap.ps1 を全モニタ撮影に
+---
