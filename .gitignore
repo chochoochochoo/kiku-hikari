@@ -1,0 +1,13 @@
+# 秘密値
+.env
+*.key
+*.pem
+secrets/
+# Python
+__pycache__/
+*.pyc
+.venv/
+# 非公開の開発用音源（README「持ち込みデータ」参照）
+music/private/
+# 実行ログの生データ
+logs/*.raw
