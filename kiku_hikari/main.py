@@ -6,6 +6,7 @@
 モード:
   direct … 音量→明るさ・重心→色の直結（v0・11/2）
   beat   … 拍連動（計画の比較 3 段の ①）。--bpm N で固定テンポ（拍追従の退避策）。拍頭は Space キーで合わせ直せる（Windows）
+  rules  … ② ルール表: 拍連動の上に「特徴量→色・明るさの床」の直結表を載せる（Claude なし・先読みなし）
   claude … ① の上に Claude の先読み（色・語彙・溜め・境界で開く）を載せる（③）。--every 秒ごとに要約を送る
 使い方:
   py -3.12 -m kiku_hikari.main --mode beat --seconds 60
@@ -79,7 +80,7 @@ def space_pressed() -> bool:
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["direct", "beat", "claude"], default="beat")
+    ap.add_argument("--mode", choices=["direct", "beat", "rules", "claude"], default="beat")
     ap.add_argument("--every", type=float, default=4.0, help="claude モード: 要約を送る間隔（秒）")
     ap.add_argument("--model", default=None, help="claude モード: モデル ID（既定 claude-opus-5-5）")
     ap.add_argument("--effort", default="low")
@@ -200,6 +201,9 @@ def main(argv=None):
                     engine.events.clear()
                 else:
                     params = engine.step(dt, st["phase"], period_s, level); extra = {}
+                    if a.mode == "rules":  # ② 特徴量→色の直結表（重心→色・音量→床）
+                        params["color"] = pick_color(feat["centroid"])
+                        params["dimmer"] = min(1.0, params["dimmer"] * (0.6 + 0.4 * level))
             written = fx.render(dmx, **params)
             if sender is not None:
                 sender.send(dmx)
