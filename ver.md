@@ -25,3 +25,7 @@
 **指示:** （本人不在・綴が 11/3 分へ前倒し）拍追従・40 Hz エンジン・拍で Pan/Tilt
 **変更:** kiku_hikari/beat.py（因果の拍追従: 対数スペクトルのフラックス→自己相関＋倍音加算→櫛で位相合わせ・位相リセットなし）、engine.py（拍で Pan 左右・Tilt 2 拍・明るさパルス）、main.py を --mode direct/beat・--bpm 固定＋Space タップ・--play 自己試験・--no-artnet に拡張。tools/beat_eval.py と docs/eval-beat.md（10 曲の表・指定 BPM は当てにならない）。自己試験ログを logs/public/ に（検査済み）
 ---
+### V202611.007 – 20261102-15:20
+**指示:** （本人不在・綴が 11/5 分へ前倒し）Claude ワーカー・先読み・JSON→DMX 結線
+**変更:** kiku_hikari/claude_worker.py（Foresight の Enum 固定 JSON・messages.parse・system 固定部に知識ファイル＋cache_control・同時 1 件・世代番号・失敗は「返答なし」扱い）、engine.py に ForesightEngine（語彙・溜め・感情の床・境界を小節頭にクオンタイズして開く）、main.py に --mode claude／--every／--model／--effort。自己試験 80 秒（03）: 18 応答・late 0・開き 1 回。README「いま動くもの」を 3 モードに
+---

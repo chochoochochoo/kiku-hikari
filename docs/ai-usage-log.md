@@ -19,3 +19,5 @@
 - そこでも Claude（Opus・Fable）を中心に、Codex・Gemini・ローカル LLM（LFM・Heretic 27B）を「話題出し」「反証」に使った。製品コードは一切書いていない。
 | 11/2 14:20〜14:35 | 自前の拍追従（beat.py）を書き、10 曲でオフライン評価（tools/beat_eval.py・参照に librosa） | Claude Code | 生成時に指定した BPM が当てにならないと判明（docs/eval-beat.md）。評価基準を「librosa との一致＋櫛の照合」に変更 |
 | 11/2 14:45〜14:50 | 拍連動モードの自己試験（自作曲 05 をヘッドホン→マイクで 60 秒・2400 フレーム・106 拍・テンポ 132→95.8 に収束・late 0） | Claude Code | 計画 11/3「灯体が拍で Pan/Tilt を打つ」の送信側は完成。実機の目視は本人待ち |
+| 11/2 14:55〜15:10 | 遅い輪 `claude_worker.py`（Enum 固定 JSON・Pydantic・プロンプトキャッシュ・別スレッド・世代番号）と先読みエンジン。3 モデルで往復を実測（Opus 5.5 2.6〜3.4 s／Sonnet 5.5 2.0〜2.2 s／Haiku 5.5 1.5〜1.7 s） | Claude Code が Claude API（製品側）を組み込む | 製品の中の Claude: 構造の先読み・色・語彙・溜め・感情 2 軸・情景一語 |
+| 11/2 15:15 | 自作曲 03 で 80 秒の通し（③ Claude モード）: 18 応答・キャッシュ読み 1,994 トークン/回・境界で 1 回開いた | Claude Opus 5.5（製品側・effort low） | 2 つの輪が一体で動く最初の記録 `logs/public/20261102-142043-claude-selftest-03-80s.jsonl` |

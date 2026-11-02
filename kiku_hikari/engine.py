@@ -1,10 +1,10 @@
-"""モーションエンジン（40 Hz）: 拍位相とレベルから Pan/Tilt/色/明るさの「意味のある値」を作る。
+"""モーションエンジン（40 Hz）: 拍位相・レベル・Claude の先読みから Pan/Tilt/色/明るさの「意味のある値」を作る。
 
-ここは計画の比較 3 段の ①拍連動のみ（白・開ゴボ・固定の振り）に相当する基礎。
-② ルール表・③ Claude は、この上で「色・語彙・展開・溜め」を差し替える形で載せる。
-- 拍頭で Pan の目標を左右に切り替え、Tilt は 2 拍で上下。移動はスルーレート制限（fixtures.Safety）に任せる
-- 明るさは拍頭でパルス（立ち上がり即・減衰は拍の長さに合わせる）
-- 位相リセットはしない（拍が外れても流れを止めない）
+比較 3 段:
+  ① BeatEngine      拍連動のみ（白・開ゴボ・固定の振り）
+  ③ ForesightEngine ①の上に Claude の先読み（色・語彙・溜め・境界での開き）を載せる。境界は予測時刻の直後の小節頭にクオンタイズ
+（② ルール表は main.py 側で色だけ差し替える）
+- 位相リセットはしない。Pan/Tilt の急変は fixtures.Safety のスルーレート制限に任せる
 """
 from __future__ import annotations
 
@@ -23,11 +23,89 @@ class BeatEngine:
         self.level = 1.0
 
     def step(self, dt: float, phase: float, period_s: float, loudness: float) -> dict:
-        """dt=フレーム間隔(s)・phase=拍位相 0..1・period_s=拍の長さ・loudness=0..1 の音量"""
-        # 拍の長さに応じた減衰（1 拍で 15% まで落ちる）
         decay = math.exp(math.log(0.15) * dt / max(0.2, period_s))
         self.level *= decay
         pan = 0.5 + 0.30 * self.pan_side
         tilt = 0.55 + 0.15 * math.cos(math.pi * ((self.beat_count % 2) + phase))
         dimmer = 0.25 + 0.75 * max(self.level, 0.5 * loudness)
         return {"pan": pan, "tilt": tilt, "dimmer": min(1.0, dimmer), "color": "white", "gobo": "open", "shutter": "open", "strobe": 0.0, "speed": 0.0}
+
+
+class ForesightEngine(BeatEngine):
+    """Claude の先読み（Foresight）を受け取り、語彙・色・溜め・開きを拍の上に載せる"""
+
+    def __init__(self, beats_per_bar: int = 4):
+        super().__init__()
+        self.bpb = beats_per_bar
+        self.fs = None              # 最新の Foresight
+        self.boundary_at = None     # 予測した境界の時刻（秒・単調時計）
+        self.open_at = None         # 小節頭にクオンタイズした開きの時刻
+        self.opened_until = -1.0    # 開き演出の終了時刻
+        self.sweep_phase = 0.0
+        self.color = "white"
+        self.next_color = "white"
+        self.events = []
+
+    def on_foresight(self, fs, now: float):
+        self.fs = fs
+        self.color, self.next_color = fs.color.value, fs.next_color.value
+        if fs.open_style.value != "none" and fs.confidence.value != "low":
+            self.boundary_at = now + fs.seconds_to_boundary
+        elif fs.confidence.value == "low":
+            self.boundary_at = None
+
+    def on_beat(self):
+        super().on_beat()
+        # 小節頭で、予測境界がこの小節の中に入っていれば「次の小節頭で開く」を確定する
+        if self.boundary_at is not None and self.beat_count % self.bpb == 1:
+            self.events.append(("bar", self.beat_count))
+
+    def step(self, dt: float, phase: float, period_s: float, loudness: float, now: float = 0.0) -> dict:
+        base = super().step(dt, phase, period_s, loudness)
+        fs = self.fs
+        if fs is None:
+            return {**base, "tame": "none", "opened": False}
+        bar_s = period_s * self.bpb
+        # 開き: 予測境界の直前の小節頭〜直後の小節頭のうち、境界に近い方
+        if self.boundary_at is not None and self.open_at is None and now >= self.boundary_at - bar_s:
+            beats_into_bar = (self.beat_count - 1) % self.bpb + phase
+            to_next_bar = (self.bpb - beats_into_bar) * period_s
+            self.open_at = now + to_next_bar
+        if self.open_at is not None and now >= self.open_at:
+            self.opened_until = now + 2 * bar_s
+            self.color = self.next_color
+            self.boundary_at = None
+            self.open_at = None
+            self.events.append(("open", round(now, 2)))
+        # 溜め: 境界の 1 小節前から
+        taming = self.boundary_at is not None and now >= self.boundary_at - bar_s
+        tame = fs.tame.value if taming else "none"
+        opened = now < self.opened_until
+        # 語彙
+        mv = fs.movement.value
+        if mv == "hold":
+            pan, tilt = 0.5, 0.55
+        elif mv == "sweep":
+            self.sweep_phase += dt / max(0.5, 2 * bar_s) * 2 * math.pi
+            pan, tilt = 0.5 + 0.35 * math.sin(self.sweep_phase), 0.55 + 0.05 * math.cos(self.sweep_phase)
+        elif mv == "chase":
+            pan, tilt = base["pan"], base["tilt"]
+        else:  # bounce
+            pan, tilt = 0.5 + 0.2 * self.pan_side, 0.55 + 0.2 * (1 - phase)
+        # 明るさ: 感情の覚醒度で床を変え、溜めで落とし、開きで一杯に
+        floor = {"low": 0.15, "mid": 0.3, "high": 0.45}[fs.arousal.value]
+        dimmer = floor + (1 - floor) * max(self.level, 0.5 * loudness)
+        shutter = "open"
+        if tame == "dim_hold":
+            dimmer = min(dimmer, 0.25)
+        elif tame == "slow_close":
+            frac = max(0.0, min(1.0, (self.boundary_at - now) / bar_s)) if self.boundary_at else 1.0
+            dimmer = dimmer * frac
+        elif tame == "freeze":
+            pan, tilt = 0.5, 0.55
+        if opened:
+            dimmer = max(dimmer, 0.9)
+            if fs.open_style.value == "blackout_then_burst" and now < self.opened_until - 2 * bar_s + 0.12:
+                shutter = "closed"
+        return {"pan": pan, "tilt": tilt, "dimmer": min(1.0, dimmer), "color": self.color, "gobo": "open", "shutter": shutter, "strobe": 0.0, "speed": 0.0,
+                "tame": tame, "opened": opened}

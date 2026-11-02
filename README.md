@@ -10,10 +10,15 @@ Built with Claude: Japan 2026（Cerebral Valley × Anthropic・2026-11-02 12:30 
 ```
 py -3.12 -m kiku_hikari.artnet                 # Art-Net ノードを探す（ArtPoll）
 py -3.12 -m kiku_hikari.audio_in               # 音声入力の特徴量を 3 秒表示
-py -3.12 -m kiku_hikari.main --seconds 20      # 音を聴いて灯体に送る（40 Hz・ログは logs/ に JSONL）
-py -3.12 -m kiku_hikari.main --no-audio --seconds 10   # 音なしで結線だけ確認
+py -3.12 -m kiku_hikari.main --mode direct --seconds 20   # ① 直結（音量→明るさ・重心→色）
+py -3.12 -m kiku_hikari.main --mode beat --seconds 60     # ② 拍連動（自前の拍追従で Pan/Tilt を打つ）。--bpm 120 で固定テンポ
+py -3.12 -m kiku_hikari.main --mode claude --seconds 90   # ③ Claude の先読み（色・語彙・溜め・境界で開く）を拍の上に載せる
+py -3.12 -m kiku_hikari.main --mode claude --play song.wav   # 手元の WAV をヘッドホン→マイクで聴かせる自己試験
+py -3.12 -m kiku_hikari.main --no-audio --seconds 10      # 音なしで結線だけ確認
 ```
-- 構成: `kiku_hikari/audio_in.py`（sounddevice・WASAPI・48 kHz・25 ms）→ `main.py`（40 Hz ループ・音量→明るさ・重心→色の直結＝比較 3 段の土台）→ `fixtures.py`（Stinger Spot 11ch・安全弁）→ `artnet.py`（ArtDmx・ArtPoll・標準ライブラリのみ）。`runlog.py` が全部を 1 本の時刻つきログにする
+- 2 つの輪: 速い輪（Python・40 Hz・拍と数値と安全）と遅い輪（Claude API・約 4 秒ごと・`claude_worker.py`・Enum 固定 JSON＝次の境界まで何秒／次の区間／開き方／色／語彙／溜め／感情 2 軸／情景一語）。知識ファイル `knowledge/lighting_knowledge.json` は system の固定部に置きプロンプトキャッシュに乗る（実測: 毎回 1,994 トークンがキャッシュ読み）
+- 実測（11/2・自作曲 03 を 80 秒）: Claude Opus 5.5・effort low で往復 2.3〜4.7 秒・18 回、境界の開きは予測時刻の直後の小節頭にクオンタイズ（46.1 s に 1 回）。ログ `logs/public/`
+- 構成: `audio_in.py`（WASAPI 48 kHz・25 ms）→ `beat.py`（自前の拍追従）→ `engine.py`（拍連動／先読みエンジン）→ `fixtures.py`（Stinger Spot 11ch・安全弁）→ `artnet.py`（ArtDmx・ArtPoll・標準ライブラリのみ）。`claude_worker.py` が遅い輪。`runlog.py` が全部を 1 本の時刻つきログにする。評価は `tools/beat_eval.py`・`docs/eval-beat.md`
 - 機材の実測は `docs/hardware-notes.md`。依存: numpy・sounddevice（`py -3.12`）
 
 ## 秘密値の扱い（公開リポジトリなので最初に決めた）

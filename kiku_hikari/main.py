@@ -6,6 +6,7 @@
 モード:
   direct … 音量→明るさ・重心→色の直結（v0・11/2）
   beat   … 拍連動（計画の比較 3 段の ①）。--bpm N で固定テンポ（拍追従の退避策）。拍頭は Space キーで合わせ直せる（Windows）
+  claude … ① の上に Claude の先読み（色・語彙・溜め・境界で開く）を載せる（③）。--every 秒ごとに要約を送る
 使い方:
   py -3.12 -m kiku_hikari.main --mode beat --seconds 60
   py -3.12 -m kiku_hikari.main --mode beat --bpm 120 --seconds 60      # 固定テンポ
@@ -22,7 +23,7 @@ import time
 import numpy as np
 
 from . import artnet
-from .engine import BeatEngine
+from .engine import BeatEngine, ForesightEngine
 from .fixtures import StingerSpot11
 from .runlog import RunLog
 
@@ -78,7 +79,10 @@ def space_pressed() -> bool:
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["direct", "beat"], default="beat")
+    ap.add_argument("--mode", choices=["direct", "beat", "claude"], default="beat")
+    ap.add_argument("--every", type=float, default=4.0, help="claude モード: 要約を送る間隔（秒）")
+    ap.add_argument("--model", default=None, help="claude モード: モデル ID（既定 claude-opus-5-5）")
+    ap.add_argument("--effort", default="low")
     ap.add_argument("--bpm", type=float, default=None, help="固定テンポ（拍追従を使わない退避策）")
     ap.add_argument("--node"); ap.add_argument("--universe", type=int, default=None); ap.add_argument("--address", type=int, default=1)
     ap.add_argument("--seconds", type=float, default=30.0)
@@ -110,7 +114,14 @@ def main(argv=None):
 
     fx = StingerSpot11(address=a.address)
     dmx = bytearray(512)
-    engine = BeatEngine()
+    engine = ForesightEngine() if a.mode == "claude" else BeatEngine()
+    worker = summarizer = None
+    if a.mode == "claude":
+        from .claude_worker import ClaudeWorker, FeatureSummarizer
+        worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log)
+        summarizer = FeatureSummarizer()
+        log.event("claude_config", model=worker.model, effort=a.effort, every=a.every)
+    next_claude = 0.0; seen_gen = -1
 
     audio = tracker = None
     if not a.no_audio:
@@ -134,7 +145,7 @@ def main(argv=None):
     t_start = time.perf_counter(); next_t = t_start; t_prev = t_start
     frames = beats = 0
     feat = {"rms_db": -80.0, "centroid": 0.0, "flux_low": 0.0, "peak": 0.0}
-    level = 0.0; st = {"tempo_bpm": 0.0, "phase": 0.0, "beat": False, "confidence": 0.0}
+    level = 0.0; st = {"tempo_bpm": 0.0, "phase": 0.0, "beat": False, "confidence": 0.0, "onset": 0.0}; extra = {}
     try:
         while time.perf_counter() - t_start < a.seconds:
             now = time.perf_counter(); dt = now - t_prev; t_prev = now
@@ -146,6 +157,8 @@ def main(argv=None):
                     if tracker is not None:
                         st = tracker.process(x)
                         beat = beat or st["beat"]
+                    if summarizer is not None:
+                        summarizer.push(now - t_start, feat, st.get("onset", 0.0))
                 if n:
                     log.event("audio", **{k: float(v) for k, v in feat.items()}, blocks=n)
             else:
@@ -159,6 +172,18 @@ def main(argv=None):
             target = max(0.0, min(1.0, (feat["rms_db"] - a.floor_db) / (a.ceil_db - a.floor_db)))
             level = max(target, level * 0.93)
 
+            if worker is not None:
+                tnow = now - t_start
+                if tnow >= next_claude and tnow >= 3.0:
+                    summ = summarizer.summary(tnow, st["tempo_bpm"], worker.latest)
+                    if worker.request(summ):
+                        log.event("claude_req", gen=worker.generation, rows=len(summ["last_30s"]))
+                    next_claude = tnow + a.every
+                if worker.latest_gen > seen_gen:
+                    seen_gen = worker.latest_gen
+                    engine.on_foresight(worker.latest, now)
+                    summarizer.history.append({"t": round(tnow, 1), "section": worker.latest.section_now.value})
+                    log.event("foresight_applied", gen=seen_gen, boundary_in=round(engine.boundary_at - now, 1) if engine.boundary_at else None)
             if a.mode == "direct":
                 pan = 0.5 + 0.25 * math.sin((now - t_start) * 2 * math.pi / 8)
                 params = {"pan": pan, "tilt": 0.55, "color": pick_color(feat["centroid"]), "dimmer": level, "shutter": "open", "speed": 0.0}
@@ -167,13 +192,20 @@ def main(argv=None):
                     engine.on_beat(); beats += 1
                     log.event("beat", n=beats, tempo_bpm=st["tempo_bpm"], confidence=st["confidence"])
                 period_s = 60.0 / st["tempo_bpm"] if st["tempo_bpm"] else 0.5
-                params = engine.step(dt, st["phase"], period_s, level)
+                if worker is not None:
+                    params = engine.step(dt, st["phase"], period_s, level, now=now)
+                    extra = {"tame": params.pop("tame"), "opened": params.pop("opened")}
+                    for ev in engine.events:
+                        log.event("engine_event", what=ev[0], at=(round(ev[1] - t_start, 2) if ev[0] == "open" else ev[1]))
+                    engine.events.clear()
+                else:
+                    params = engine.step(dt, st["phase"], period_s, level); extra = {}
             written = fx.render(dmx, **params)
             if sender is not None:
                 sender.send(dmx)
             frames += 1
             if frames % 8 == 0:
-                log.event("dmx", frame=frames, **written, level=round(level, 3), phase=round(st["phase"], 3), tempo_bpm=st["tempo_bpm"])
+                log.event("dmx", frame=frames, **written, level=round(level, 3), phase=round(st["phase"], 3), tempo_bpm=st["tempo_bpm"], **(extra if a.mode != "direct" else {}))
             next_t += FRAME
             sleep = next_t - time.perf_counter()
             if sleep > 0:
