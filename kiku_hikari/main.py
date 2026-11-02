@@ -87,6 +87,7 @@ def main(argv=None):
     ap.add_argument("--effort", default="low")
     ap.add_argument("--bpm", type=float, default=None, help="固定テンポ（拍追従を使わない退避策）")
     ap.add_argument("--node"); ap.add_argument("--universe", type=int, default=None); ap.add_argument("--address", type=int, default=1)
+    ap.add_argument("--fixtures", type=int, default=1, help="灯体の台数（アドレスは --address から 11ch ずつ。左右は Pan を対称に）")
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--no-audio", action="store_true")
     ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす（マイクで聴く）")
@@ -118,7 +119,8 @@ def main(argv=None):
         log.event("config", mode=a.mode, bpm=a.bpm, audio=not a.no_audio, artnet=False)
     print(f"ログ {log.path}")
 
-    fx = StingerSpot11(address=a.address)
+    fxs = [StingerSpot11(address=a.address + 11 * i) for i in range(a.fixtures)]
+    fx = fxs[0]
     dmx = bytearray(512)
     viz = None
     if a.viz:
@@ -222,6 +224,13 @@ def main(argv=None):
                         params["color"] = pick_color(feat["centroid"])
                         params["dimmer"] = min(1.0, params["dimmer"] * (0.6 + 0.4 * level))
             written = fx.render(dmx, **params)
+            for i, f in enumerate(fxs[1:], 1):  # 2 台目以降: 偶数番は Pan を左右対称に、中央は正面寄り
+                p2 = dict(params)
+                if i % 2 == 1:
+                    p2["pan"] = 1.0 - params["pan"]
+                elif a.fixtures >= 3 and i == a.fixtures - 1 and a.fixtures % 2 == 1:
+                    p2["pan"] = 0.5 + 0.3 * (params["pan"] - 0.5)
+                f.render(dmx, **p2)
             if sender is not None:
                 sender.send(dmx)
             frames += 1
