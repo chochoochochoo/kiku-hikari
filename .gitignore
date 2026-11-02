@@ -1,13 +1,60 @@
-# 秘密値
+# ---- 秘密値（絶対に入れない）----
 .env
+.env.*
+!.env.example
 *.key
 *.pem
+*.p12
+*.pfx
+*.crt
+id_rsa*
+id_ed25519*
+.netrc
+.npmrc
+.pypirc
 secrets/
-# Python
+credentials*.json
+token*.json
+*.token
+
+# ---- 実行時キャッシュ（鍵や個人パスが混ざりやすい）----
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.ipynb_checkpoints/
+*.ipynb
+.cache/
 .venv/
-# 非公開の開発用音源（README「持ち込みデータ」参照）
+venv/
+env/
+*.egg-info/
+build/
+dist/
+
+# ---- エディタ・ツールのローカル設定 ----
+.vscode/
+.idea/
+.claude/settings.local.json
+.claude/.credentials*
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 非公開の開発用音源（README「持ち込みデータ」参照）----
 music/private/
-# 実行ログの生データ
-logs/*.raw
+*.wav
+*.mp3
+*.flac
+!assets/public/*.wav
+
+# ---- 実行ログの生データ（公開するログは logs/public/ に scan 済みのものだけ）----
+logs/
+!logs/public/
+!logs/public/**
+*.raw
+*.sqlite
+*.db
