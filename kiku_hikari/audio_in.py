@@ -69,6 +69,51 @@ class AudioIn:
         return {"rms_db": round(float(20 * np.log10(rms)), 2), "centroid": round(centroid, 1), "flux_low": round(flux, 4), "peak": round(float(np.max(np.abs(x))), 4)}
 
 
+class FileIn:
+    """マイクの代わりに WAV を 25 ms ずつ実時間で流す（灯体もマイクも無い人・審査員向けの疑似モード）。AudioIn と同じ q / features を持つ"""
+
+    def __init__(self, path: str, fs: int = FS, block: int = BLOCK):
+        import threading
+        import time as _t
+        import soundfile as sf
+        y, sr = sf.read(path, dtype="float32", always_2d=True)
+        if sr != fs:
+            raise RuntimeError(f"{path}: {sr} Hz（48 kHz の WAV にしてください）")
+        self.y = y.mean(axis=1); self.fs = fs; self.block = block; self.device = f"file:{path}"
+        self.q: queue.Queue[np.ndarray] = queue.Queue(maxsize=200)
+        self.dropped = 0
+        self._inner = AudioIn.__new__(AudioIn)
+        self._inner.fs, self._inner.block = fs, block
+        self._inner._win = np.hanning(block).astype(np.float32)
+        self._inner._freqs = np.fft.rfftfreq(block, 1 / fs)
+        self._inner._low = (self._inner._freqs >= 40) & (self._inner._freqs <= 250)
+        self._inner._prev_low = None
+        self._stop = False
+        self._thr = threading.Thread(target=self._feed, args=(_t,), daemon=True)
+
+    def _feed(self, _t):
+        t0 = _t.perf_counter(); i = 0
+        while not self._stop and i + self.block <= len(self.y):
+            target = t0 + (i / self.fs)
+            d = target - _t.perf_counter()
+            if d > 0:
+                _t.sleep(d)
+            try:
+                self.q.put_nowait(self.y[i:i + self.block].copy())
+            except queue.Full:
+                self.dropped += 1
+            i += self.block
+
+    def start(self):
+        self._thr.start(); return self
+
+    def stop(self):
+        self._stop = True
+
+    def features(self, x):
+        return AudioIn.features(self._inner, x)
+
+
 if __name__ == "__main__":
     import time
     a = AudioIn().start()

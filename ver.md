@@ -37,3 +37,7 @@
 **指示:** （本人不在・綴が 11/4 分へ前倒し）音響変化検出・ブラインド判定の手順・知識ファイル
 **変更:** kiku_hikari/change.py（CUSUM の変化検出）と engine.on_change（救済: 次の小節頭で開く）。knowledge/lighting_knowledge.json（サブエージェントが研究の原文から下書き・規則 25）。claude_worker の要約を相対レベル（曲中最大=1）に正規化・legend を添付。docs/eval-blind.md（第三者 3 人・ラテン方格・質問 3 つ）。07 で 80 秒の自己試験: Claude 18 応答（キャッシュ読み 11,813 トークン/回）・救済 3 回
 ---
+### V202611.010 – 20261102-14:33:03
+**指示:** （本人不在・綴）疑似モードと README の本文。本人から EtherMX の設定画面（2007=.239 出力 U0/U0/U2/U3、2008=.240 入力/入力/U2/U3・DMX 出力 29 Hz）
+**変更:** audio_in.FileIn（WAV を実時間で直接入力）、viz.py（tkinter の仮想灯体）、main.py に --file / --viz。README を提出形に書き直し（誰のためか／Claude の役割／他モデル／11/2 前の準備／Claude Code で何を作ったか／いま動くもの／審査員向けセットアップ／残り）。docs/hardware-notes.md に EtherMX 設定（DMX 出力 29→40 Hz の依頼）
+---

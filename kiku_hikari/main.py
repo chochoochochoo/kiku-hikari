@@ -89,7 +89,9 @@ def main(argv=None):
     ap.add_argument("--node"); ap.add_argument("--universe", type=int, default=None); ap.add_argument("--address", type=int, default=1)
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--no-audio", action="store_true")
-    ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす")
+    ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす（マイクで聴く）")
+    ap.add_argument("--file", help="疑似モード: マイクの代わりにこの WAV を直接入力にする（48 kHz）")
+    ap.add_argument("--viz", action="store_true", help="画面に仮想灯体を出す（灯体が無くても見える）")
     ap.add_argument("--out-device", default="Realtek", help="--play の出力デバイス名の一部（WASAPI）")
     ap.add_argument("--floor-db", type=float, default=-55.0); ap.add_argument("--ceil-db", type=float, default=-15.0)
     ap.add_argument("--logdir", default="logs"); ap.add_argument("--no-artnet", action="store_true", help="DMX を送らない（解析だけ）")
@@ -116,6 +118,10 @@ def main(argv=None):
 
     fx = StingerSpot11(address=a.address)
     dmx = bytearray(512)
+    viz = None
+    if a.viz:
+        from .viz import Viz
+        viz = Viz()
     engine = ForesightEngine() if a.mode == "claude" else BeatEngine()
     worker = summarizer = None
     if a.mode == "claude":
@@ -128,9 +134,9 @@ def main(argv=None):
 
     audio = tracker = None
     if not a.no_audio:
-        from .audio_in import AudioIn
+        from .audio_in import AudioIn, FileIn
         from .beat import BeatTracker
-        audio = AudioIn().start()
+        audio = (FileIn(a.file) if a.file else AudioIn()).start()
         tracker = BeatTracker() if a.bpm is None else None
         log.event("audio_start", device=audio.device, fs=audio.fs, block=audio.block)
     fixed = FixedTempo(a.bpm) if a.bpm else None
@@ -217,6 +223,12 @@ def main(argv=None):
             if sender is not None:
                 sender.send(dmx)
             frames += 1
+            if viz is not None and frames % 2 == 0:
+                fsx = getattr(engine, "fs", None)
+                viz.update(dmx, a.address, {"beat": beats, "tempo": st["tempo_bpm"], "phase": st["phase"], "mode": a.mode,
+                                            "section": fsx.section_now.value if fsx else "-", "next": fsx.section_next.value if fsx else "-",
+                                            "boundary": round(engine.boundary_at - now, 1) if getattr(engine, "boundary_at", None) else "-",
+                                            "tame": extra.get("tame", "-"), "scene": fsx.scene_word if fsx else "", "reason": fsx.reason if fsx else ""})
             if frames % 8 == 0:
                 log.event("dmx", frame=frames, **written, level=round(level, 3), phase=round(st["phase"], 3), tempo_bpm=st["tempo_bpm"], **(extra if a.mode != "direct" else {}))
             next_t += FRAME
