@@ -1,6 +1,6 @@
 # A/B の判定（敵対レビュー 2 体の判定規則を機械化・logs/ab/ の既存ログだけで計算）
 #   比べる 2 腕を同じ曲・同じ反復で組にし、F の勝ち負けを数える（符号検定・片側）
-#   「暫定勝者」と言うのは: 組の 8/9 以上で勝ち（同点は負け扱い）、かつ Claude 由来の的中が基準より多く、かつ 3 曲すべてで曲別平均 F が基準以上。
+#   「暫定勝者」と言うのは: 組の 8/9 以上で勝ち（同点は負け扱い）、かつ Claude 由来の的中が基準より多く、かつ 全曲で曲別平均 F が基準以上。
 #   その判定が、許容幅 1.5/2.0/2.5 秒 × 仮正解 timbre/agree の 6 通りすべてで同じ時だけ「頑健」
 #   採点対象の正解は、最初の Claude 応答が届く 12 秒より後の切れ目だけ（誰も届かない点で全腕を薄めない）
 # 使い方: py -3.12 tools/ab_judge.py --music <wav のフォルダ> --win d-strict --base a-strict [--reps 4,5,6] [--truth human]
@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ab_run import OUT, score, truth_for  # noqa: E402
 
 sys.stdout.reconfigure(encoding="utf-8")
+SONGS = ["03_idol_dance", "05_mixture_funk", "07_guitar_pop_rock", "11_enka"]   # 11_enka=演歌風（曲調の幅出し・2026-11-03 追加）
 
 
 def f_of(arm, rep, song, music, which, tol):
@@ -50,8 +51,9 @@ def judge(music, win, base, reps, songs, which, tol):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--music", required=True); ap.add_argument("--win", required=True); ap.add_argument("--base", default="a-strict")
-    ap.add_argument("--reps", default="4,5,6"); ap.add_argument("--truth", choices=["pseudo", "human"], default="pseudo", help="human=作者の耳の正解で判定（tools/annotate_sections.py）"); ap.add_argument("--songs", default="03_idol_dance,05_mixture_funk,07_guitar_pop_rock")
+    ap.add_argument("--reps", default="4,5,6"); ap.add_argument("--truth", choices=["pseudo", "human"], default="pseudo", help="human=作者の耳の正解で判定（tools/annotate_sections.py）"); ap.add_argument("--songs", default=",".join(SONGS), help="既定=3 曲＋11_enka（走行ログが無い曲は自動で外す）")
     a = ap.parse_args(); reps = [int(x) for x in a.reps.split(",")]; songs = a.songs.split(",")
+    songs = [s for s in songs if glob.glob(os.path.join(OUT, f"{a.base}-rep{reps[0]}", s, "*.jsonl"))] or songs   # まだ走っていない曲は外す
     res = []
     for which in (("human",) if a.truth == "human" else ("timbre", "agree")):
         for tol in (1.5, 2.0, 2.5):

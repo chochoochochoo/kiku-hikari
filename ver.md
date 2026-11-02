@@ -106,3 +106,7 @@
 **指示:** （入口経由・本人判断）既定 d/a は耳の正解づけの後に決める。annotate_sections.py を迷わず使える形に・正解を入れたら走り直し無しで d/a を再判定する 1 行・既定は a のまま
 **変更:** tools/annotate_sections.py: 区間名を毎回聞くのをやめ「文字＋Enter」の 1 回入力に（v/p/c/b/k/i/o）・u で取り消し・Enter で再生開始・既定の出力デバイス（リモートデスクトップ越しでも手元で鳴る）・反応の遅れ 0.2 秒を引く・生成時の構成を参考表示・保存先はリポジトリの sections/（.gitignore 済み）。ab_run.truth_for / ab_judge.py に --truth human。無音 WAV で打鍵・取り消し・保存を確認、仮正解を置いて判定が仮正解の結果と一致することを確認（確認後に削除）。製品コードは変えていない
 ---
+### V202611.025 – 20261103-03:14:03
+**指示:** （入口経由・本人依頼 02:1x）3 曲の曲調が似ているので演歌風を 1 曲足す。生成して jpop/ と Dropbox に置き、A/B（a-strict・d-strict × 3 回）を回し、ab_judge の既定の曲に足す
+**変更:** Mac mini の ACE-Step で 11_enka.wav/.txt を生成（166 秒）し、music/jpop/ と Dropbox\bwc-hantei-20261103\music\ にコピー。11_enka で a-strict・d-strict を反復 4〜6 で走行（6 本・失敗 0）。tools/ab_judge.py の --songs 既定を 4 曲に（走行ログが無い曲は自動で外す）。仮正解での 4 曲判定も「差なし」（d は 11 で Claude 由来の開きあり・a は救済 2 回のみ）。docs/ai-usage-log.md に生成を記録。製品コードは変えていない
+---
