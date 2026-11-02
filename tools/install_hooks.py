@@ -16,6 +16,8 @@ PRE_PUSH = """#!/bin/sh
 # push 対象コミットの全 blob と名義・本文を検査
 top=$(git rev-parse --show-toplevel)
 while read local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then continue; fi   # リモートの ref 削除
+  case "$remote_ref" in refs/tags/*) sh "$top/tools/secret_scan.sh" --object "$local_sha" || exit 2; continue;; esac
   if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
     sh "$top/tools/secret_scan.sh" --history || exit 2
   else
@@ -49,7 +51,8 @@ if login and uid:
     run(["git", "config", "user.email", f"{uid}+{login}@users.noreply.github.com"])
     print("commit identity:", run(["git", "config", "user.email"]))
 else:
-    print("gh でログインしていないので名義は設定しなかった。git config user.email を noreply アドレスにしてからコミットすること")
+    print("gh でログインしていないので名義を設定できない。先に gh auth login するか、git config user.email を noreply アドレスにすること")
+    sys.exit(2)
 
 r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "secret_scan.py"), "--history"], cwd=ROOT)
 sys.exit(r.returncode)

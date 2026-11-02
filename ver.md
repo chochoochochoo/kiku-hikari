@@ -13,3 +13,7 @@
 **指示:** 漏えい防止の仕組み 他aiたちにも監査させて
 **変更:** 監査4系統（敵対レビュア2体=Opus・Codex・Gemini）の指摘を反映。secret_scan.py を「git に入る中身」（ステージ済み blob・コミットの blob・名義・本文）の検査に書き換え（--staged/--range/--history/--all）。日本語ファイル名（quotepath off・-z）、UTF-16、不明バイナリ、git 失敗時・JSON 失敗時は止める側、allow 印は .md と .env.example のみ、電話番号・郵便番号・引用符なし代入・JWT を追加、.env への書き込みとリポジトリ外は hook で対象外。Claude フックに Bash を追加（--no-verify・force push・コマンド内の鍵）と permissions.deny。secret_scan.sh（python3 の Store スタブを避けて動く解釈系を選ぶ）。install_hooks.py が名義を noreply に設定し全履歴を検査。.gitignore を logs/* 形式に（logs/public が追跡される）。GitHub Actions で push ごとに全履歴検査。tools/test_secret_scan.py（一時クローンで 24 ケース・全 OK）
 ---
+### V202611.004 – 20261102-14:05
+**指示:** （監査の続き）Gemini の監査結果を反映
+**変更:** 代入名の拡大・引用符なし代入の行末条件除去・電話番号のハイフンなし/+81・郵便番号は〒か住所語の近傍のみ・メール許可に github.com・allow 印でも本物の鍵の形と拒否語は止める・禁止パスは大文字小文字無視・.zip は不明バイナリ扱い・許可バイナリも鍵の形だけ検査・NotebookEdit・-n/core.hooksPath・コミット時点の名義検査（--staged）・タグ本文（--object・--history）・pre-push の ref 削除を素通し・install_hooks は gh 未ログインで停止。test_secret_scan.py を 39 ケースに（全 OK）
+---

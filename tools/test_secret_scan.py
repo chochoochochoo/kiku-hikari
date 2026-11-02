@@ -107,13 +107,36 @@ cases = [
     ("H4 .env への書き込みは通る", 0, {"tool_name": "Write", "tool_input": {"file_path": R + "/.env", "content": f"ANTHROPIC_API_KEY={FAKE_ANT}\n"}}),
     ("H5 リポジトリ外は通る", 0, {"tool_name": "Write", "tool_input": {"file_path": os.path.join(T, "outside.md"), "content": f"mail {MAIL}\n"}}),
     ("H6 Edit の鍵は止める", 2, {"tool_name": "Edit", "tool_input": {"file_path": R + "/x.py", "old_string": "a", "new_string": f'key = "{FAKE_ANT}"'}}),
-    ("H7 .md の allow 印は通る", 0, {"tool_name": "Write", "tool_input": {"file_path": R + "/README.md", "content": f"例: {FAKE_ANT}  secret-scan: allow\n"}}),
+    ("H7 .md の allow 印でメールの例は通る", 0, {"tool_name": "Write", "tool_input": {"file_path": R + "/README.md", "content": f"例: {MAIL}  secret-scan: allow\n"}}),
     ("H8 .py の allow 印は効かない", 2, {"tool_name": "Write", "tool_input": {"file_path": R + "/x.py", "content": f"k='{FAKE_ANT}'  # secret-scan: allow\n"}}),
     ("H9 電話番号を止める", 2, {"tool_name": "Write", "tool_input": {"file_path": R + "/x.md", "content": f"連絡 {PHONE}\n"}}),
     ("H10 引用符なし password を止める", 2, {"tool_name": "Write", "tool_input": {"file_path": R + "/c.ini", "content": PW + "\n"}}),
     ("H11 os.environ の代入は通る", 0, {"tool_name": "Write", "tool_input": {"file_path": R + "/c.py", "content": 'api_key = os.environ["ANTHROPIC_API_KEY"]\n'}}),
     ("H12 壊れた JSON は止める", 2, None),
+    ("H13 git commit -n を止める", 2, {"tool_name": "Bash", "tool_input": {"command": "git commit -n -m x"}}),
+    ("H14 core.hooksPath を止める", 2, {"tool_name": "Bash", "tool_input": {"command": "git -c core.hooksPath=/dev/null push"}}),
+    ("H15 git@github.com の URL は通る", 0, {"tool_name": "Bash", "tool_input": {"command": "git remote set-url origin git@github.com:u/r.git"}}),
+    ("H16 大文字の .PEM は止める", 2, {"tool_name": "Write", "tool_input": {"file_path": R + "/cert.PEM", "content": "x\n"}}),
+    ("H17 .md の allow 印でも本物の鍵の形は止める", 2, {"tool_name": "Write", "tool_input": {"file_path": R + "/README.md", "content": f"{FAKE_ANT} secret-scan: allow\n"}}),
+    ("H18 .md の allow 印で電話番号の例は通る", 0, {"tool_name": "Write", "tool_input": {"file_path": R + "/README.md", "content": f"例 {PHONE} secret-scan: allow\n"}}),
+    ("H19 NotebookEdit の鍵を止める", 2, {"tool_name": "NotebookEdit", "tool_input": {"notebook_path": R + "/a.ipynb", "new_source": f"k='{FAKE_ANT}'"}}),
+    ("H20 コード中の 123-4567 は通る（郵便番号の誤検知）", 0, {"tool_name": "Write", "tool_input": {"file_path": R + "/x.py", "content": "RANGE = '123-4567'\n"}}),
+    ("H21 住所つきの郵便番号は止める", 2, {"tool_name": "Write", "tool_input": {"file_path": R + "/x.md", "content": "123-" + "4567 東京都千代田区\n"}}),
+    ("H22 ハイフンなし携帯番号を止める", 2, {"tool_name": "Write", "tool_input": {"file_path": R + "/x.md", "content": "tel " + "0901" + "2345678\n"}}),
+    ("H23 行末コメント付きの password= を止める", 2, {"tool_name": "Write", "tool_input": {"file_path": R + "/c.ini", "content": PW + " # memo\n"}}),
 ]
+# I: コミット時点の名義（gmail）を pre-commit が止める
+w("i.txt", "ok\n"); sh(["git", "add", "-A"])
+code, out = sh(["git", "-c", "user.email=" + MAIL, "commit", "-q", "-m", "I"])
+case("I 名義が gmail のコミットは pre-commit で止まる", 1, code, out)
+sh(["git", "reset", "-q"])
+# J: 注釈つきタグの本文に鍵 → --object が止める
+sh(["git", "tag", "-a", "v0-test", "-m", "note " + FAKE_GH])
+code, out = sh([sys.executable, "tools/secret_scan.py", "--object", "v0-test"])
+case("J タグ本文の鍵を --object が止める", 2, code, out)
+code, out = sh([sys.executable, "tools/secret_scan.py", "--history"])
+case("J2 タグ本文の鍵を --history が止める", 2, code, out)
+sh(["git", "tag", "-d", "v0-test"])
 for name, want, d in cases:
     if d is None:
         code, out = sh([sys.executable, "tools/secret_scan.py", "--hook"], inp="{not json")

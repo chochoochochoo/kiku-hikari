@@ -3,7 +3,8 @@
 # 使い方:
 #   python tools/secret_scan.py --staged          # ステージ済みの中身（pre-commit）
 #   python tools/secret_scan.py --range A..B      # push 対象コミットの全 blob と名義・本文（pre-push）
-#   python tools/secret_scan.py --history         # 全履歴（CI・クローン直後の確認）
+#   python tools/secret_scan.py --history         # 全履歴とタグ（CI・クローン直後の確認）
+#   python tools/secret_scan.py --object SHA      # タグや単体オブジェクト（pre-push でタグを送る時）
 #   python tools/secret_scan.py --all             # 追跡中の全ファイル（HEAD の中身）
 #   python tools/secret_scan.py --hook            # Claude Code PreToolUse（stdin の JSON。Write/Edit/MultiEdit/Bash）
 #   python tools/secret_scan.py <path>...         # 任意のファイル（作業フォルダ）
@@ -36,11 +37,11 @@ PATTERNS = [
     ("秘密鍵ブロック", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP |)PRIVATE KEY")),
     ("URL 埋め込み認証", re.compile(r"https?://[^\s/:@]+:[^\s@/]+@[^\s/]+")),
     ("Authorization ヘッダの実値", re.compile(r"(?i)(?:x-api-key|authorization)\s*[:=]\s*['\"]?(?:bearer\s+)?[A-Za-z0-9_\-\.]{16,}")),
-    ("鍵らしき代入（引用符つき）", re.compile(r"(?i)\b(?:api[_\-]?key|secret[_\-]?key|access[_\-]?token|auth[_\-]?token|password|passwd|pwd)\b\s*[:=]\s*['\"][^'\"\s]{8,}['\"]")),
-    ("鍵らしき代入（引用符なし・数字を含む）", re.compile(r"(?i)\b(?:api[_\-]?key|secret[_\-]?key|access[_\-]?token|auth[_\-]?token|password|passwd|pwd)\b\s*[:=]\s*(?![\"'$({\[])(?=\S*\d)[A-Za-z0-9!#%&*+./:=?@^_~\-]{8,}\s*$")),
-    ("電話番号", re.compile(r"(?<![\d\-])0\d{1,4}-\d{1,4}-\d{4}(?![\d\-])")),
-    ("郵便番号", re.compile(r"〒\s?\d{3}-?\d{4}|(?<![\d\-])\d{3}-\d{4}(?![\d\-])")),
-    ("メールアドレス（公開名義は noreply のみ）", re.compile(r"(?i)[A-Za-z0-9._%+\-]+@(?!users\.noreply\.github\.com|anthropic\.com|example\.)[A-Za-z0-9.\-]+\.[a-z]{2,}")),
+    ("鍵らしき代入（引用符つき）", re.compile(r"(?i)\b[\w\-]*(?:api[_\-]?key|secret|token|password|passwd|pwd)\b\s*[:=]\s*['\"](?=\S*\d)[^'\"\s]{8,}['\"]")),
+    ("鍵らしき代入（引用符なし・数字を含む）", re.compile(r"(?i)\b[\w\-]*(?:api[_\-]?key|secret|token|password|passwd|pwd)\b\s*[:=]\s*(?![\"'$({\[])(?=\S*\d)[A-Za-z0-9!#%&*+./:=?@^_~\-]{8,}")),
+    ("電話番号", re.compile(r"(?<![\d\-])(?:0\d{1,4}-\d{1,4}-\d{4}|0[789]0\d{8}|\+81[\-\s]?\d{1,4}[\-\s]?\d{1,4}[\-\s]?\d{4})(?![\d\-])")),
+    ("郵便番号", re.compile(r"〒\s?\d{3}-?\d{4}|(?<![\d\-])\d{3}-\d{4}(?![\d\-])(?=.*[都道府県市区町村郡])")),
+    ("メールアドレス（公開名義は noreply のみ）", re.compile(r"(?i)[A-Za-z0-9._%+\-]+@(?!users\.noreply\.github\.com|github\.com|anthropic\.com|example\.)[A-Za-z0-9.\-]+\.[a-z]{2,}")),
 ]
 FORBIDDEN_PATHS = [
     re.compile(r"(^|/)\.env(\..*)?$"),
@@ -58,9 +59,10 @@ FORBIDDEN_PATHS = [
     re.compile(r"(^|/)(credentials|token)[^/]*\.json$"),
     re.compile(r"^logs/(?!public/)"),
 ]
+HARD = {"Anthropic API キー", "OpenAI 風キー", "GitHub トークン", "AWS アクセスキー", "Google API キー", "Slack トークン", "JWT", "Discord Webhook", "秘密鍵ブロック", "URL 埋め込み認証"}
 ALLOW_PATH = re.compile(r"(^|/)\.env\.example$")
 ALLOW_MARK_EXT = (".md", ".env.example")
-BINARY_OK_EXT = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".wav", ".mp3", ".flac", ".ogg", ".mp4", ".woff", ".woff2", ".ttf", ".otf", ".zip")
+BINARY_OK_EXT = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".wav", ".mp3", ".flac", ".ogg", ".mp4", ".woff", ".woff2", ".ttf", ".otf")
 DENY_PATH = os.path.join(os.path.expanduser("~"), ".kiku-hikari-denylist.txt")
 
 
@@ -80,13 +82,14 @@ def decode(raw):
     return raw.decode("utf-8", errors="replace")
 
 
-def scan_text(text, label):
+def scan_text(text, label, hard_only=False):
     hits = []
-    allow_ok = label.endswith(ALLOW_MARK_EXT)
+    allow_ok = label.lower().endswith(ALLOW_MARK_EXT)
     for ln, line in enumerate(text.splitlines(), 1):
-        if allow_ok and "secret-scan: allow" in line:
-            continue
+        allowed = allow_ok and "secret-scan: allow" in line  # 例示の行: 本物の鍵の形と拒否語だけは見る
         for name, rx in PATTERNS:
+            if (allowed or hard_only) and name not in HARD:
+                continue
             if rx.search(line):
                 hits.append(f"{label}:{ln}: {name}")
         low = line.lower()
@@ -99,14 +102,16 @@ def scan_text(text, label):
 def scan_blob(rel, raw):
     rel = rel.replace("\\", "/")
     hits = []
-    if not ALLOW_PATH.search(rel) and any(rx.search(rel) for rx in FORBIDDEN_PATHS):
+    low = rel.lower()
+    if not ALLOW_PATH.search(low) and any(rx.search(low) for rx in FORBIDDEN_PATHS):
         hits.append(f"{rel}: 入れてはいけない種類のファイル")
     if raw is None:
         return hits
     if b"\0" in raw[:8000] and not (raw.startswith(b"\xff\xfe") or raw.startswith(b"\xfe\xff")):
-        if not rel.lower().endswith(BINARY_OK_EXT):
+        if not low.endswith(BINARY_OK_EXT):
             hits.append(f"{rel}: 不明なバイナリ（中身を検査できない。画像・音声以外のバイナリは入れない）")
-        return hits
+            return hits
+        return hits + scan_text(raw.decode("latin-1"), rel, hard_only=True)  # 画像・音声のメタデータに鍵が無いか
     return hits + scan_text(decode(raw), rel)
 
 
@@ -127,6 +132,25 @@ def scan_commit_meta(sha):
     return scan_text(meta, f"commit {sha[:8]} の名義・本文")
 
 
+def scan_object(sha):
+    """pre-push でタグを送る時などに、そのオブジェクト（tag なら本文と tagger、commit なら通常検査）を見る"""
+    typ = git(["cat-file", "-t", sha]).strip()
+    if typ == "tag":
+        hits = scan_text(git(["cat-file", "-p", sha]), f"tag {sha[:8]}")
+        target = git(["rev-list", "-n", "1", sha]).strip()
+        h2, _ = scan_commits([target])
+        return hits + h2, 1
+    if typ == "commit":
+        return scan_commits([sha])
+    return scan_blob(sha, git(["cat-file", "-p", sha], binary=True)), 1
+
+
+def scan_identity():
+    """コミットしようとしている名義（git config の user.name/email）"""
+    ident = git(["var", "GIT_AUTHOR_IDENT"]) + git(["var", "GIT_COMMITTER_IDENT"])
+    return scan_text(ident, "コミットの名義（git config user.email）")
+
+
 def scan_commits(revs):
     hits = []
     n = 0
@@ -145,13 +169,13 @@ def hook_mode():
     hits = []
     if tool == "Bash":
         cmd = ti.get("command") or ""
-        if re.search(r"--no-verify|--no-gpg-sign", cmd):
-            hits.append("Bash: --no-verify は使わない（秘密値検査を飛ばす）")
+        if re.search(r"--no-verify|--no-gpg-sign|hooksPath|\bgit\s+(?:commit|push)\b[^|;&\n]*\s-[a-zA-Z]*n\b", cmd):
+            hits.append("Bash: --no-verify / -n / core.hooksPath は使わない（秘密値検査を飛ばす）")
         if re.search(r"git\s+push\b.*(\s-f\b|--force)", cmd):
             hits.append("Bash: force push は使わない（push 前の検査範囲が壊れる）")
         hits += scan_text(cmd, "Bash コマンド")
     else:
-        path = (ti.get("file_path") or "").replace("\\", "/")
+        path = (ti.get("file_path") or ti.get("notebook_path") or "").replace("\\", "/")
         rel = path
         if path and os.path.isabs(path):
             try:
@@ -162,9 +186,9 @@ def hook_mode():
             return 0  # リポジトリ外（台帳・メモリ）は対象外
         if re.search(r"(^|/)\.env$", rel):
             return 0  # 鍵の置き場所そのもの（.gitignore 済み）
-        if not ALLOW_PATH.search(rel) and any(rx.search(rel) for rx in FORBIDDEN_PATHS):
+        if not ALLOW_PATH.search(rel.lower()) and any(rx.search(rel.lower()) for rx in FORBIDDEN_PATHS):
             hits.append(f"{rel}: 入れてはいけない種類のファイルへの書き込み")
-        for key in ("content", "new_string"):
+        for key in ("content", "new_string", "new_source"):
             if ti.get(key):
                 hits += scan_text(ti[key], rel or key)
         for e in ti.get("edits", []) or []:
@@ -188,13 +212,20 @@ def main(argv):
     hits = []
     n = 0
     if argv[:1] == ["--staged"]:
+        hits += scan_identity()
         for rel in zlist(["diff", "--cached", "--name-only", "--diff-filter=ACMR"]):
             n += 1
             hits += scan_blob(rel, git(["show", f":{rel}"], binary=True))
+    elif argv[:1] == ["--object"] and len(argv) > 1:
+        hits, n = scan_object(argv[1])
     elif argv[:1] == ["--range"] and len(argv) > 1:
         hits, n = scan_commits(git(["rev-list", argv[1]]).split())
     elif argv[:1] == ["--history"]:
         hits, n = scan_commits(git(["rev-list", "--all"]).split())
+        for line in git(["for-each-ref", "refs/tags", "--format=%(objectname) %(objecttype)"]).splitlines():
+            sha, typ = line.split()
+            if typ == "tag":
+                hits += scan_text(git(["cat-file", "-p", sha]), f"tag {sha[:8]}")
     elif argv[:1] == ["--all"]:
         for rel in zlist(["ls-files"]):
             n += 1
