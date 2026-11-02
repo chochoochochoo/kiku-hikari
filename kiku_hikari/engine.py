@@ -54,6 +54,12 @@ class ForesightEngine(BeatEngine):
         elif fs.confidence.value == "low":
             self.boundary_at = None
 
+    def on_change(self, now: float):
+        """音響変化検出からの救済: 予測が無い（または遠い）のに変化が来たら、次の小節頭で開く"""
+        if self.open_at is None and (self.boundary_at is None or self.boundary_at - now > 2.0):
+            self.boundary_at = now
+            self.events.append(("rescue", round(now, 2)))
+
     def on_beat(self):
         super().on_beat()
         # 小節頭で、予測境界がこの小節の中に入っていれば「次の小節頭で開く」を確定する

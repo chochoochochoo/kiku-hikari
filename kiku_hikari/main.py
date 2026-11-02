@@ -24,6 +24,7 @@ import time
 import numpy as np
 
 from . import artnet
+from .change import ChangeDetector
 from .engine import BeatEngine, ForesightEngine
 from .fixtures import StingerSpot11
 from .runlog import RunLog
@@ -123,6 +124,7 @@ def main(argv=None):
         summarizer = FeatureSummarizer()
         log.event("claude_config", model=worker.model, effort=a.effort, every=a.every)
     next_claude = 0.0; seen_gen = -1
+    detector = ChangeDetector() if a.mode in ("claude", "beat", "rules") and not a.no_audio else None
 
     audio = tracker = None
     if not a.no_audio:
@@ -144,6 +146,7 @@ def main(argv=None):
         log.event("play", path=a.play, device=dev)
 
     t_start = time.perf_counter(); next_t = t_start; t_prev = t_start
+    log.event("loop_start")  # これ以降の at= は loop_start からの秒（曲の頭）
     frames = beats = 0
     feat = {"rms_db": -80.0, "centroid": 0.0, "flux_low": 0.0, "peak": 0.0}
     level = 0.0; st = {"tempo_bpm": 0.0, "phase": 0.0, "beat": False, "confidence": 0.0, "onset": 0.0}; extra = {}
@@ -160,6 +163,12 @@ def main(argv=None):
                         beat = beat or st["beat"]
                     if summarizer is not None:
                         summarizer.push(now - t_start, feat, st.get("onset", 0.0))
+                    if detector is not None:
+                        ch = detector.push(feat["rms_db"], feat["centroid"], st.get("onset", 0.0))
+                        if ch:
+                            log.event("change_detected", at=round(now - t_start, 2), z=ch["z"])
+                            if worker is not None:
+                                engine.on_change(now)
                 if n:
                     log.event("audio", **{k: float(v) for k, v in feat.items()}, blocks=n)
             else:
@@ -197,7 +206,7 @@ def main(argv=None):
                     params = engine.step(dt, st["phase"], period_s, level, now=now)
                     extra = {"tame": params.pop("tame"), "opened": params.pop("opened")}
                     for ev in engine.events:
-                        log.event("engine_event", what=ev[0], at=(round(ev[1] - t_start, 2) if ev[0] == "open" else ev[1]))
+                        log.event("engine_event", what=ev[0], at=(round(ev[1] - t_start, 2) if ev[0] in ("open", "rescue") else ev[1]))
                     engine.events.clear()
                 else:
                     params = engine.step(dt, st["phase"], period_s, level); extra = {}

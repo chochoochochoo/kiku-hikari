@@ -170,16 +170,21 @@ class FeatureSummarizer:
         self._acc: list[dict] = []
         self._sec = -1
         self.history: list[dict] = []  # Claude が宣言した区間の履歴 [{"t":秒,"section":...}]
+        self.max_db = -80.0            # これまでの最大音量（相対レベルの基準）
+        self.max_onset = 1e-6
 
     def push(self, t: float, feat: dict, onset: float):
         sec = int(t)
         if sec != self._sec and self._acc:
             n = len(self._acc)
+            rms = sum(a["rms_db"] for a in self._acc) / n
+            onset = sum(a["onset"] for a in self._acc) / n
+            self.max_db = max(self.max_db, rms); self.max_onset = max(self.max_onset, onset)
             self.rows.append({
                 "t": self._sec,
-                "rms_db": round(sum(a["rms_db"] for a in self._acc) / n, 1),
-                "centroid": int(sum(a["centroid"] for a in self._acc) / n),
-                "onset": round(sum(a["onset"] for a in self._acc) / n, 2),
+                "level": round(max(0.0, min(1.0, 1 + (rms - self.max_db) / 30.0)), 2),   # 最大音量を 1、30 dB 下を 0
+                "bright": int(sum(a["centroid"] for a in self._acc) / n),
+                "onset": round(onset / self.max_onset, 2),                                  # 最大オンセット密度を 1
             })
             self.rows = self.rows[-self.window_s:]
             self._acc = []
@@ -190,6 +195,7 @@ class FeatureSummarizer:
         return {
             "now_s": round(t, 1),
             "tempo_bpm": round(tempo_bpm, 1),
+            "legend": "level=音量（曲中の最大を1・30dB下を0）, bright=スペクトル重心Hz, onset=オンセット密度（最大を1）。1秒ごと・古い→新しい",
             "last_30s": self.rows,
             "sections_so_far": self.history[-12:],
             "previous_answer": json.loads(last.model_dump_json()) if last else None,
