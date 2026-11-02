@@ -17,3 +17,7 @@
 **指示:** （監査の続き）Gemini の監査結果を反映
 **変更:** 代入名の拡大・引用符なし代入の行末条件除去・電話番号のハイフンなし/+81・郵便番号は〒か住所語の近傍のみ・メール許可に github.com・allow 印でも本物の鍵の形と拒否語は止める・禁止パスは大文字小文字無視・.zip は不明バイナリ扱い・許可バイナリも鍵の形だけ検査・NotebookEdit・-n/core.hooksPath・コミット時点の名義検査（--staged）・タグ本文（--object・--history）・pre-push の ref 削除を素通し・install_hooks は gh 未ログインで停止。test_secret_scan.py を 39 ケースに（全 OK）
 ---
+### V202611.005 – 20261102-14:12
+**指示:** PLAN §7 の 11/2 分（音声入力・ログ基盤・Art-Net 疎通）着手して（本人不在・綴が進める）
+**変更:** kiku_hikari/ パッケージ新設: artnet.py（ArtPoll 探索・ArtDmx 送信）、audio_in.py（WASAPI 48 kHz 25 ms・RMS/重心/低域フラックス）、runlog.py（JSONL・単調時計）、fixtures.py（Stinger Spot 11ch 表＋安全弁）、main.py（v0: 40 Hz 直結）。Art-Net ノード 2 台を発見（.239 が Universe 0 出力）。20 秒の通しログを logs/public/ に（検査済み）。docs/hardware-notes.md・docs/ai-usage-log.md・README「いま動くもの」
+---

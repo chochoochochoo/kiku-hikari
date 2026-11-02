@@ -4,7 +4,17 @@ Built with Claude: Japan 2026（Cerebral Valley × Anthropic・2026-11-02 12:30 
 このリポジトリの内容はすべてハッカソン期間中に Claude Code で新規に制作する。
 
 - 制作: I LLC
-- 状態: 2026-11-02 13:10 作成（初回コミット）。README は提出までに書き直す。
+- 状態: 2026-11-02 14:10 v0 ＝ 音声入力→特徴量→Art-Net→灯体 の通しが動く（下の「いま動くもの」）。README は提出までに書き直す。
+
+## いま動くもの（v0・11/2）
+```
+py -3.12 -m kiku_hikari.artnet                 # Art-Net ノードを探す（ArtPoll）
+py -3.12 -m kiku_hikari.audio_in               # 音声入力の特徴量を 3 秒表示
+py -3.12 -m kiku_hikari.main --seconds 20      # 音を聴いて灯体に送る（40 Hz・ログは logs/ に JSONL）
+py -3.12 -m kiku_hikari.main --no-audio --seconds 10   # 音なしで結線だけ確認
+```
+- 構成: `kiku_hikari/audio_in.py`（sounddevice・WASAPI・48 kHz・25 ms）→ `main.py`（40 Hz ループ・音量→明るさ・重心→色の直結＝比較 3 段の土台）→ `fixtures.py`（Stinger Spot 11ch・安全弁）→ `artnet.py`（ArtDmx・ArtPoll・標準ライブラリのみ）。`runlog.py` が全部を 1 本の時刻つきログにする
+- 機材の実測は `docs/hardware-notes.md`。依存: numpy・sounddevice（`py -3.12`）
 
 ## 秘密値の扱い（公開リポジトリなので最初に決めた）
 - 鍵は `.env`（.gitignore 済み）か環境変数 `ANTHROPIC_API_KEY` からだけ読む。雛形は `.env.example`。説明用のメールは example.com、鍵の例は `sk-ant-...` のように短く書く
