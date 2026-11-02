@@ -49,3 +49,15 @@
 **指示:** （綴）同一曲 3 段の公開ログと字幕生成
 **変更:** tools/subtitles.py（ログ→SRT）。自作曲 05 を ①beat／②rules／③claude で 70 秒ずつ（--file・灯体なし）→ logs/public/ に 3 本（検査済み）
 ---
+### V202611.013 – 20261102-14:40:27
+**指示:** （綴）正解づけと的中率の道具
+**変更:** tools/annotate_sections.py（作者が耳で境界を打つ→sections/*.json・Claude には渡さない）、tools/foresight_eval.py（開き vs 正解・予測/救済の別・余計な開き）。.gitignore は sections/* を除外し sections/public/ だけ追跡
+
+## 次回再開ポイント（2026-11-02 14:4x・本人が戻ったら）
+1. 実機: 灯体を 2007 のポート 1/2 に、11Ch・A001、EtherMX の DMX 出力を 40 Hz に → `py -3.12 -m kiku_hikari.main --mode beat --seconds 60` で拍で Pan/Tilt が打てるか目視（PLAN の 11/3 18:00 の関門）
+2. Pan/Tilt の最大速度を見て fixtures.Safety（max_pan_step/max_tilt_step）を詰める
+3. 知識ファイル knowledge/lighting_knowledge.json の「根拠なし」「energy の目安」を本人の判断で上書き
+4. 正解づけ: `py -3.12 tools/annotate_sections.py <wav>` を 3 曲 → `tools/foresight_eval.py` で的中率
+5. ブラインド判定（docs/eval-blind.md）の 3 人の候補・撮影場所
+6. 残り: 動画（字幕は tools/subtitles.py）、README 英語付記、Max コードを別アカウントで適用
+---

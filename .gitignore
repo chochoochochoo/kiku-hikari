@@ -45,6 +45,9 @@ Thumbs.db
 desktop.ini
 
 # ---- 非公開の開発用音源（README「持ち込みデータ」参照）----
+# 作者が付けた区間の正解（非公開曲のもの）。公開曲の分は sections/public/ に
+sections/*
+!sections/public/
 music/private/
 *.wav
 *.mp3
