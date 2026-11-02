@@ -69,3 +69,7 @@
 **指示:** いま台湾なので物理的な接続できない→ PrefLight（kuwatec）で対応しよう（本人）
 **変更:** docs/hardware-notes.md に PrefLight の事実（Stinger Spot がライブラリにある・Art-Net 入力・6454 占有・動画記録）。main.py: --node 指定時は探索せず Universe 0 を既定に。preflight/ フォルダ（シーンは本人が GUI で作成）
 ---
+### V202611.016 – 20261102-15:49:15
+**指示:** PrefLight で代用（本人がシーン作成・3 台目を Net 3 に新設・「めちゃはげしくうごいてる！」）
+**変更:** docs/hardware-notes.md に PrefLight 受信成功の条件と失敗原因の推定（同一 PC の複数送信元）。コード変更なし（--node/--universe 768 で動作）
+---

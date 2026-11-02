@@ -31,3 +31,7 @@
 - 入力: DoctorMX / Art-Net / sACN / OSC（ヘルプ「DMX 接続...」）。Art-Net は UDP 6454 を PrefLight が占有するので、こちらの ArtPoll 探索は PrefLight 起動中は使わず `--node 127.0.0.1`（または母艦の LAN IP）で直接送る。ArtPollReply には応える
 - 記録: ファイルメニュー「静止画として記録」「動画に記録」→ `Documents\PrefLight Capture\`（登録済みなので 10 秒制限なし）
 - シーン: `preflight/stage.plt`（本人が GUI で作成: Stinger Spot ×1・アドレス 1・11ch・Universe 0）
+- **2026-11-02 15:48 受信成功**: 3 台目の Stinger を「系統 3 = Art-Net Net 3 / Sub 0 / Univ 0」（Port-Address 0x0300 = 768）に置き、`--node 127.0.0.1 --universe 768` で送って動いた（拍連動モード・白ビーム・Pan 204）。
+  - 失敗していた間の状況: 同じ PC で DoctorMX が Art-Net 0/0/0 を送信中＋EtherMX 2007/2008 の入力ポートも 0/0/0 で Art-Net を出していた。ヘルプ「同一コンピューター内の複数の送信元は 1 つとみなされ正常にマージされない」「マージ対象以外の送信元は無視」に該当した可能性が高い（事実: EtherMX を Net 1 に変え、系統 3 を新設した後に受信した。DoctorMX 送信の停止が効いたかは未切り分け）
+  - 送り先は 127.0.0.1 で足りる（ローカル UDP の到達は 5 アドレスで確認済み）。ファイアウォールは無関係
+  - 教訓: PrefLight を使う時は **専用の Net（例: Net 3）を切り、同じ PC の他の Art-Net 送信元（DoctorMX の Art-Net 出力）を止める**
