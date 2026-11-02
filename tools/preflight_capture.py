@@ -13,6 +13,10 @@ import time
 
 sys.stdout.reconfigure(encoding="utf-8")
 user32 = ctypes.windll.user32
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)  # 150% 表示でも物理ピクセルの座標を得る（これが無いと枠がずれる）
+except Exception:
+    user32.SetProcessDPIAware()
 EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, w.HWND, w.LPARAM)
 
 

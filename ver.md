@@ -85,3 +85,7 @@
 **指示:** 録画かキー入力の仕組み作れる？（OBS は？）
 **変更:** tools/preflight_capture.py: --find（窓一覧）・--screen（.NET CopyFromScreen の BMP 連番→ffmpeg・20fps・RDP 越しで可）・--record（gdigrab: RDP では黒）・--hotkey（SendInput: 入力デスクトップ外で拒否＝不可）。制約: RDP 切断中は画面が黒（録画不可）。ddagrab は RDP で Operation not permitted
 ---
+### V202611.020 – 20261102-18:08:56
+**指示:** リモートデスクトップつないだままにした／録画 試して
+**変更:** preflight_capture.py を DPI 対応（150% 表示で枠がずれていた→物理ピクセル）。曲 03 で ①②③ を 80 秒ずつ画面録画（bwc-japan2026/video/preflight-03-*-3fx-*.mp4）。対応ログ 3 本を logs/public/ に
+---
