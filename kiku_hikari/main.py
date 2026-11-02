@@ -114,7 +114,8 @@ def main(argv=None):
             universe = universe if universe is not None else outs[0].outputs[0]
         sender = artnet.ArtNetSender(node_ip, universe)
         print(f"送り先 {node_ip} universe {universe} address {a.address}")
-        log.event("config", node=node_ip, universe=universe, address=a.address, mode=a.mode, bpm=a.bpm, audio=not a.no_audio)
+        node_masked = node_ip if node_ip.startswith(("127.", "10.")) else "<lan-ip>"  # 家の LAN アドレスはログに残さない
+        log.event("config", node=node_masked, universe=universe, address=a.address, mode=a.mode, bpm=a.bpm, audio=not a.no_audio)
     else:
         log.event("config", mode=a.mode, bpm=a.bpm, audio=not a.no_audio, artnet=False)
     print(f"ログ {log.path}")
