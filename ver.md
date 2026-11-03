@@ -135,3 +135,7 @@
 **指示:** （入口経由・本人判断）既定 a/e は知識ファイル v2 の後に A/B して決める。それまで既定は a のまま。v2 を差し替えるだけで A/B が回る形にし、「青一定」の直し方 3 案を変種として用意する
 **変更:** main.py に --knowledge（知識ファイルのパス）と --color v1/p1/p2/p3（既定 v1。worker の COLOR_RULES を system に足す）。main.py に抜けていた import os を追加。ab_run.py に --knowledge・--logroot と、色つきの腕名（例 e-strict-p1）。ab_h.py に --logroot と、色の種類・変化回数の列。tools/ab_kb.py（v2 の A/B を 1 コマンドで走行→採点）。eval-beat.md に準備の節。短い走行で e+p1+--knowledge と既定の両方が通ることを確認。README の数字は変えていない
 ---
+
+### V202611.032 – 20261103-12:01:23
+**指示:** （入口経由）知識 v2（rules-v2.json）で a/e と色の直し方 p1〜p3 を 4 曲 × 3 回採点。往復遅延が悪化したら compact でも回す。v1 との並びを 5 行以内で報告
+**変更:** ab_kb.py で 60 走行（logs/ab-v2・失敗 1 回）。docs/eval-beat.md に「知識ファイル v2 の A/B」の節（F・p・間に合った率・色の種類/変化/内訳・往復遅延）。遅延は悪化なし（中央値 2.7〜2.9 秒）なので compact は回していない。v2 はリポジトリへ未取り込み・README は未更新・既定は a のまま
