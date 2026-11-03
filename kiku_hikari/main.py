@@ -86,9 +86,9 @@ def main(argv=None):
     ap.add_argument("--every", type=float, default=4.0, help="claude モード: 要約を送る間隔（秒）")
     ap.add_argument("--model", default=None, help="claude モード: モデル ID（既定 claude-opus-5-5）")
     ap.add_argument("--effort", default="low")
-    ap.add_argument("--summary", choices=["a", "b", "c", "d", "e", "f"], default="a", help="claude モード: 要約の形（A/B 比較用・claude_worker.FeatureSummarizer）")
-    ap.add_argument("--knowledge", default=None, help="claude モード: 知識ファイルのパス（既定 knowledge/lighting_knowledge.json＝v1。v2 の A/B 用）")
-    ap.add_argument("--color", choices=["v1", "p1", "p2", "p3"], default="v1", help="claude モード: 色の決め方（v1=知識ファイルどおり／p1 区間の配色／p2 R20 の緩和／p3 開くたびに色を変える。A/B 用）")
+    ap.add_argument("--summary", choices=["a", "b", "c", "d", "e", "f"], default="e", help="claude モード: 要約の形（既定 e=次の境界を小節数で答える・2026-11-03 本人決定。他は A/B 比較用・claude_worker.FeatureSummarizer）")
+    ap.add_argument("--knowledge", default=None, help="claude モード: 知識ファイルのパス（既定 knowledge/lighting_knowledge_v2.json＝v2。v1 は knowledge/lighting_knowledge.json）")
+    ap.add_argument("--color", choices=["v1", "p1", "p2", "p3"], default="p2", help="claude モード: 色の決め方（既定 p2・2026-11-03 本人決定。v1=知識ファイルどおり／p1 区間の配色／p2 R20 の緩和／p3 開くたびに色を変える。A/B 用）")
     ap.add_argument("--adopt", choices=["strict", "lowok"], default="strict", help="claude モード: 確信度 low の予測を採るか（A/B 比較用）")
     ap.add_argument("--bpm", type=float, default=None, help="固定テンポ（拍追従を使わない退避策）")
     ap.add_argument("--node"); ap.add_argument("--universe", type=int, default=None); ap.add_argument("--address", type=int, default=1)
@@ -139,7 +139,7 @@ def main(argv=None):
         worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log, variant=a.summary, knowledge=a.knowledge, color=a.color)
         summarizer = FeatureSummarizer(variant=a.summary)
         log.event("claude_config", model=worker.model, effort=a.effort, every=a.every, summary=a.summary, adopt=a.adopt,
-                  knowledge=os.path.basename(a.knowledge) if a.knowledge else "lighting_knowledge.json", color=a.color)
+                  knowledge=os.path.basename(a.knowledge) if a.knowledge else "lighting_knowledge_v2.json", color=a.color)
     next_claude = 0.0; seen_gen = -1; f_due = False
     detector = ChangeDetector() if a.mode in ("claude", "beat", "rules") and not a.no_audio else None
 

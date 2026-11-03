@@ -139,3 +139,7 @@
 ### V202611.032 – 20261103-12:01:23
 **指示:** （入口経由）知識 v2（rules-v2.json）で a/e と色の直し方 p1〜p3 を 4 曲 × 3 回採点。往復遅延が悪化したら compact でも回す。v1 との並びを 5 行以内で報告
 **変更:** ab_kb.py で 60 走行（logs/ab-v2・失敗 1 回）。docs/eval-beat.md に「知識ファイル v2 の A/B」の節（F・p・間に合った率・色の種類/変化/内訳・往復遅延）。遅延は悪化なし（中央値 2.7〜2.9 秒）なので compact は回していない。v2 はリポジトリへ未取り込み・README は未更新・既定は a のまま
+
+### V202611.033 – 20261103-13:13:29
+**指示:** （入口経由・本人の決定）製品 ③ の既定を e＋色 p2 に。知識 v2 を差し替えやすい形でリポジトリに取り込み、README の数字（F・間に合い・色）を v2＋e+p2 の実測に。eval-beat に決定の経緯を 1 段落。完了の合図を入口へ
+**変更:** tools/import_knowledge.py を新設（文面は元のまま・~/Claude/ と gakushu/ の場所だけ除く・第 2 版も同じコマンドで上書き）→ knowledge/lighting_knowledge_v2.json（規則 30・出典 URL 54）。claude_worker の既定の知識を v2 に（KNOWLEDGE_V1 は残す）。main の既定を --summary e・--color p2 に。ab_run は色と知識を毎回明示（省略時 v1）。README: Claude の答えを「何小節」に・知識ファイルの節を v2 に（キャッシュ約 17,800）・評価の行を追加・他モデルの節に Gemini の映像書き出しを追記。ai-usage-log に 2 行。eval-beat に決定の段落。25 秒の疑似走行で summary=e・color=p2・v2 を確認（exit 0）

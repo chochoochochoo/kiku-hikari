@@ -1,0 +1,403 @@
+{
+ "version": "0.2-draft（BWC学習 rules-v2 第 1 版）",
+ "written": "2026-11-03",
+ "note": "研究の原文（research/bwc-*/extracts.json と sources/）から綴が起こした下書き。作者の判断で上書きする。energy の数値は原文に無く綴の目安（根拠なし）。palette は Stinger Spot の色ホイール 8 色（white/red/orange/yellow/green/blue/light_blue/pink）に限定。source は『研究フォルダ/sources/ファイル名:引用の先頭 40 字』。原文に根拠が無い項目は『（根拠なし・作者の判断待ち）』。 ／v2: 公式ライブ映像 87 本（idol 24・funk/mixture 21・guitar_rock 25・enka 17）を Gemini（gemini-3.8-flash・YouTube URL 入力）に時刻つきで書き出させ、Claude が集計して規則を差し替え・追加した。色は Gemini の文章記述からのキーワード集計で、人の目では未検品（確信度 中）。映像編集のつなぎ目と判定された変化は除外。数値の詳細は 学習側の集計 と rules-v2.md。",
+ "sections": {
+  "intro": {
+   "energy": 0.3,
+   "palette": [
+    "blue",
+    "white"
+   ],
+   "movement": "hold",
+   "tame": "楽器1本やボーカルだけの『裸』のイントロは、全体を暗く保ちスポット1点に絞って始める。",
+   "open": "バンド全員が入った瞬間に、その曲の基調色（1〜3色）へ切り替える。",
+   "source": "bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:たとえば、ギターだけのイントロなどは“ギターの裸”。／裸のパートにスポットライトを当てる演出が定番／bwc-stage-lighting-craft/sources/harman-mike-baldassari-interview.md:It’s best to think of one, two or three colors that work best for each song.（palette の色名そのものは根拠なし・作者の判断待ち）／観察: intro の look の色は 4 ジャンルとも blue と white が上位（blue 39・white 31 件）"
+  },
+  "verse": {
+   "energy": 0.4,
+   "palette": [
+    "blue",
+    "pink",
+    "orange"
+   ],
+   "movement": "hold",
+   "tame": "曲の基調色を保ち、動かさない（サビまで変化を取っておく）。",
+   "open": "verse 頭では明るさを落とし、歌い手へスポット（verse 頭の切替 135 件中 spot 52 件）。色は 1 回目と同じでなくてよい。",
+   "source": "bwc-stage-lighting-craft/sources/independent-artist-diy-lighting.md:1曲1色を基本にして、サビだけ変えるくらいで十分な効果があります。／bwc-stage-lighting-craft/sources/harman-mike-baldassari-interview.md:When the verses or chorus repeated, so did the lighting.（palette の色名そのものは根拠なし・作者の判断待ち）／観察: verse の色は blue が最多（53 件）。idol は pink(purple) 14、guitar_rock は orange(amber) 11 が並ぶ。観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=19s（a01 00:19・Magenta/red LED strip patterns and front key light）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=27s（a02 00:27・High-contrast monochrome look with graphic text on）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=22s（a03 00:22・Deep blue stage wash and circular floor LED rim li）"
+  },
+  "pre_chorus": {
+   "energy": 0.5,
+   "palette": [
+    "blue",
+    "light_blue"
+   ],
+   "movement": "sweep",
+   "tame": "サビ頭の約 14 秒前（中央値・四分位 10〜20 秒）で、明るさを落とすより色を変えて期待を積む（pre_chorus の切替 66 件中、暗くなるのは 9%・色の変化が 82%）。",
+   "open": "サビ頭の瞬間に元の明るさへ戻す（開き自体は chorus 側で行う）。",
+   "source": "bwc-music-structure/sources/patent-us20240114610-dim-before-section.md:may start between 5 and 15 seconds before the start of said second section, for example.／the system creates an anticipatory fading effect that builds up anticipation until the moment the second section starts（palette・movement は根拠なし・作者の判断待ち）／観察: 観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=185s（a01 03:05・Multiple laser fan lines shoot through stadium fog）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=81s（a02 01:21・Red flood lights overhead and red kanji screen gra）／https://www.youtube.com/watch?v=boYwMFlRapk&t=258s（a04 04:18・Dim stage with focused overhead key lights on the ）"
+  },
+  "chorus": {
+   "energy": 0.9,
+   "palette": [
+    "white",
+    "orange",
+    "red",
+    "pink"
+   ],
+   "movement": "sweep",
+   "tame": "溜めない（pre_chorus で済ませる）。",
+   "open": "サビ頭で白を足して全体を一気に明るく（213 件中 73% が明るくなる・色は white が最多）。29% は客席にも光を向ける。開いた look はサビの間ずっと保つ（次の切替まで中央値 28 秒）。",
+   "source": "bwc-music-structure/sources/patent-us20240114610-dim-before-section.md:increase said light intensity and/or color saturation of said light effects at the start of said second section／bwc-stage-lighting-craft/sources/kplan-live-lighting-column.md:歌のサビの際にムービングライトで観客を照らすことで、その場の一体感を演出します。／bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:サビは赤基調で激しく。／bwc-synesthesia-music-color/sources/palmer-2013-pnas-pmc.md:faster music in the major mode produced color choices that were more saturated, lighter, and yellower／観察: 観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=50s（a01 00:50・Full stage blast of cyan/white beams and flashing ）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=53s（a02 00:53・Dense white laser beam web radiating out to the ar）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=52s（a03 00:52・Saturated red wash across stage, floor projection,）"
+  },
+  "bridge": {
+   "energy": 0.5,
+   "palette": [
+    "pink",
+    "blue"
+   ],
+   "movement": "sweep",
+   "tame": "基調色から一度外し、明るさを落として『別の場所』に見せる。",
+   "open": "最後のサビへ向けて pre_chorus と同じ溜めに入る。",
+   "source": "（根拠なし・作者の判断待ち）"
+  },
+  "break": {
+   "energy": 0.0,
+   "palette": [],
+   "movement": "hold",
+   "tame": "ブレイクは暗転に限らない。色と動きを変える方が多い（98 件中、暗くなる 30%・色の変化 71%・動き 37%）。",
+   "open": "ブレイク明けは verse（35 件）かサビ（26 件）へ。サビへ明ける時は R04 の開き。",
+   "source": "bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:「ブレイク」とは、曲の中で一瞬だけ無音になる部分。／このタイミングに合わせて照明を切り替えると、曲全体に緩急と迫力が生まれます。／曲の終わりやブレイク（無音の瞬間）で使うと、緊張感と余韻が生まれる。（open の戻し方は根拠なし・作者の判断待ち）／観察: 観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=74s（a01 01:14・Green outline fixtures and scanning lasers during ）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=66s（a02 01:06・Deep saturated red wash silencing the main video w）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=37s（a03 00:37・Blinding white LED wall flashes and rapid beam mov）"
+  },
+  "interlude": {
+   "energy": 0.7,
+   "palette": [
+    "white",
+    "blue"
+   ],
+   "movement": "sweep",
+   "tame": "ソロ楽器1本の『裸』ならスポット1点に絞る。",
+   "open": "ギターソロの山で客席向きのバックライト（目潰し）を使う。",
+   "source": "bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:裸のパートにスポットライトを当てる演出が定番／観客側に向けて点灯する“目潰しライト”は盛り上がりの象徴。／ギターソロやサビにおすすめ。（palette の色名は根拠なし・作者の判断待ち）"
+  },
+  "outro": {
+   "energy": 0.8,
+   "palette": [
+    "white",
+    "red"
+   ],
+   "movement": "chase",
+   "tame": "盛り上がらないアウトロは verse の look に戻して徐々に落とす。",
+   "open": "盛り上がるアウトロの最後だけストロボ（安全上限内）を使い、曲の終わりは暗転で余韻を作る。",
+   "source": "bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:アウトロが盛り上がる楽曲の最後に用いるとメリハリがつく。／曲の終わりやブレイク（無音の瞬間）で使うと、緊張感と余韻が生まれる。（palette・movement・静かなアウトロの扱いは根拠なし・作者の判断待ち）／観察: 曲の終わりは 74 件中 65% が暗くなり、55% が暗転。観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=228s（a01 03:48・Instant blackout to silhouette lighting as music s）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=204s（a03 03:24・Focused overhead white spotlight on center trio fa）／https://www.youtube.com/watch?v=boYwMFlRapk&t=325s（a04 05:25・Floor fades down to stark white rim backlight silh）"
+  }
+ },
+ "emotion_color": [
+  {
+   "valence": "positive",
+   "arousal": "high",
+   "colors": [
+    "yellow",
+    "orange",
+    "white"
+   ],
+   "why": "速い長調の音楽には、より彩度が高く明るく黄みの強い色が選ばれた。",
+   "source": "bwc-synesthesia-music-color/sources/palmer-2013-pnas-pmc.md:faster music in the major mode produced color choices that were more saturated, lighter, and yellower"
+  },
+  {
+   "valence": "negative",
+   "arousal": "low",
+   "colors": [
+    "blue"
+   ],
+   "why": "遅い短調の音楽には、低彩度で暗く青みの強い色が選ばれた。",
+   "source": "bwc-synesthesia-music-color/sources/palmer-2013-pnas-pmc.md:slower, minor music produced the opposite pattern (choices that were desaturated, darker, and bluer)"
+  },
+  {
+   "valence": "positive",
+   "arousal": "low",
+   "colors": [
+    "orange",
+    "pink"
+   ],
+   "why": "暖色の光は明るい主題を示しやすく、黄/青の色次元は暖/冷(+.72)と幸福/悲しい(+.55)に相関した（arousal 低の分を暗めに出す判断は根拠なし）。",
+   "source": "bwc-stage-lighting-craft/sources/etc-objectives-of-lighting-design.md:Warm-toned light tends to suggest happier themes while cool tones tend to support sadder ones.／bwc-synesthesia-music-color/sources/whiteford-2018-bach-to-the-blues.md:two of the 10 emotion scales did: happy/sad (+.55) and warm/cool (+.72)"
+  },
+  {
+   "valence": "negative",
+   "arousal": "high",
+   "colors": [
+    "red"
+   ],
+   "why": "Palmer 2013 は怒り/穏やかの相関(+0.89, +0.93)を報告するが、手元の引用に色相の指定は無い。",
+   "source": "（根拠なし・作者の判断待ち）"
+  },
+  {
+   "valence": "positive",
+   "arousal": "high",
+   "colors": [
+    "white",
+    "yellow"
+   ],
+   "why": "アップテンポな曲では明るい色、バラードでは落ち着いたトーンを選ぶと演出の一貫性が保てる。",
+   "source": "bwc-stage-lighting-craft/sources/kplan-live-lighting-column.md:アップテンポな曲では明るい色を、バラードでは落ち着いたトーンの色を選ぶことで"
+  }
+ ],
+ "vocabulary": {
+  "hold": "パン/チルトを止め、同じ位置・同じ色を保つ。（根拠なし・作者の判断待ち）",
+  "sweep": "パン/チルトを一方向へゆっくり流す。位置変化は1秒以上のフェードで（根拠: bwc-artnet-dmx/sources/uking-8bit-16bit-jerky.md:Give position changes a fade of a second or more instead of snapping.）",
+  "chase": "複数灯を順番に点灯して光が走って見せる。（根拠なし・作者の判断待ち）",
+  "bounce": "拍に合わせてチルトを上下に往復させる。（根拠なし・作者の判断待ち）",
+  "tame": "次の区間の頭（鍵となる瞬間）まで、明るさ・彩度を徐々に下げて期待を積むこと。（根拠: bwc-music-structure/sources/patent-us20240114610-dim-before-section.md:the system creates an anticipatory fading effect that builds up anticipation until the moment the second section starts。日本語の『溜め』の定義そのものは原文に無し）",
+  "open": "鍵となる瞬間に、明るさ・彩度を元の値以上へ一気に戻すこと。（根拠: bwc-music-structure/sources/patent-us20240114610-dim-before-section.md:returning to the original light intensity when the key moment occurs。日本語の『開き』の定義そのものは原文に無し）",
+  "blackout": "ステージの照明を一気に落とし真っ暗にする演出。曲の終わりやブレイクで使う。（根拠: bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:ステージの照明を一気に落とし、真っ暗にする演出。）"
+ },
+ "safety": {
+  "strobe_max_hz": 3,
+  "flash_count_limit": "1秒間に3回を超える点滅は原則避ける（WCAG・民放連基準・英国TV規制）。英国舞台団体 NODA は毎秒4回以下かつ一度に30秒以内。民放連は基準超過時でも毎秒5回を限度・輝度変化20％以下・連続2秒以内。毎秒3〜30回（資料により3〜60回）が発作を最も誘発しやすい帯域。『鮮やかな赤』の点滅は特に慎重に。舞台向けの日本の点滅上限の原文は未到達。",
+  "pan_tilt": "位置変化はスナップでなく1秒以上のフェードを与える。パン/チルト速度チャンネルは値0が最速の機種があるためチャートで確認し、フェードと速度チャンネルは併用しない。DMX512 出力ゲートウェイの ArtDmx 受付上限は 44Hz。加減速の基準資料は未到達。",
+  "source": "bwc-artnet-dmx/sources/wcag22-three-flashes.md:Web pages do not contain anything that flashes more than three times in any one second period／bwc-artnet-dmx/sources/tokyo-singi-minporen-quote.txt:ａ 映像や光の点滅は、原則として１秒間に３回を超える使用を避けるとともに／(a)「鮮やかな赤」の点滅は、特に慎重に扱うこと。／bwc-stage-lighting-craft/sources/epilepsy-society-pse-2023.txt:restrict the flash rate to three per second or less,／Between 3 and 30 Hertz (flashes per second) are the／bwc-stage-lighting-craft/sources/noda-topical-tip-15-strobe.txt:they should not be used for more（毎秒4回以下・30秒以内）／bwc-artnet-dmx/sources/uking-8bit-16bit-jerky.md:Give position changes a fade of a second or more instead of snapping.／bwc-artnet-dmx/sources/artnet4-spec.txt:For a gateway outputting DMX512, this will always be the maximum rate of 44Hz."
+ },
+ "rules": [
+  {
+   "id": "R01",
+   "when": "曲の開始時（基調色を決めるとき）",
+   "then": "基調色は 2 色まで決め、サビ用に white を別に持つ。1 曲の中で 3〜4 色が出るのは普通",
+   "why": "実演では 1 曲に出る色の種類の中央値が 4（演歌は 3）。基調色だけで組む曲はほぼ無い。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=50s（a01 00:50・Full stage blast of cyan/white beams and flashing ）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=53s（a02 00:53・Dense white laser beam web radiating out to the ar）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=52s（a03 00:52・Saturated red wash across stage, floor projection,）／v1: bwc-stage-lighting-craft/sources/harman-mike-baldassari-interview.md:It’s best to think of one, two or three colors that work best for each song.",
+   "v2": "修正"
+  },
+  {
+   "id": "R02",
+   "when": "verse や chorus が 2 回目以降に繰り返されたとき",
+   "then": "2 回目の verse は 1 回目と同じ明るさ・同じ動きに戻す。色は変えてよい",
+   "why": "2 回目の verse の色が 1 回目と同じ系統だったのは 25/55 曲（45%）。明るさを落とす点は共通。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=19s（a01 00:19・Magenta/red LED strip patterns and front key light）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=27s（a02 00:27・High-contrast monochrome look with graphic text on）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=22s（a03 00:22・Deep blue stage wash and circular floor LED rim li）／v1: bwc-stage-lighting-craft/sources/harman-mike-baldassari-interview.md:When the verses or chorus repeated, so did the lighting.",
+   "v2": "弱めた"
+  },
+  {
+   "id": "R03",
+   "when": "次の区間（サビ）の頭まで 5〜15 秒で、区間間の音量差が閾値（例 5 dB）を超えると見込まれるとき",
+   "then": "サビ頭の約 14 秒前（10〜20 秒）に pre_chorus の look へ切り替える。減光より色の変更で溜める",
+   "why": "pre_chorus→サビの間隔は中央値 14 秒（53 組）で v1 の 5〜15 秒と合う。ただし暗くするのは 9% で、色を変えるのが主。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=185s（a01 03:05・Multiple laser fan lines shoot through stadium fog）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=81s（a02 01:21・Red flood lights overhead and red kanji screen gra）／https://www.youtube.com/watch?v=boYwMFlRapk&t=258s（a04 04:18・Dim stage with focused overhead key lights on the ）／v1: bwc-music-structure/sources/patent-us20240114610-dim-before-section.md:may start between 5 and 15 seconds before the start of said second section, for example.／Said threshold may be 5 dB for audio intensity, for example.",
+   "v2": "時間は裏づけ・方法は修正"
+  },
+  {
+   "id": "R04",
+   "when": "サビ（鍵となる区間）の頭",
+   "then": "サビ頭で white を足して全体を一気に明るく。3 割は客席にも光を向ける",
+   "why": "chorus_start 213 件中 73% が明るくなる・29% が客席照明。色は white が最多。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=50s（a01 00:50・Full stage blast of cyan/white beams and flashing ）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=53s（a02 00:53・Dense white laser beam web radiating out to the ar）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=52s（a03 00:52・Saturated red wash across stage, floor projection,）／v1: bwc-music-structure/sources/patent-us20240114610-dim-before-section.md:this key moment may be further emphasized by increasing the light intensity and/or color saturation of the light effects at the start of the second section.",
+   "v2": "裏づけ（色を white 寄りに修正）"
+  },
+  {
+   "id": "R05",
+   "when": "開き（R04）の直後の数秒",
+   "then": "開いた look はサビの終わりまで保ち、次の verse 頭で落とす（上げた分を数秒で戻さない）",
+   "why": "サビ頭から次の切替まで中央値 28 秒（四分位 21〜38 秒）。数秒で戻す例は少ない。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=50s（a01 00:50・Full stage blast of cyan/white beams and flashing ）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=53s（a02 00:53・Dense white laser beam web radiating out to the ar）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=52s（a03 00:52・Saturated red wash across stage, floor projection,）／v1: bwc-music-structure/sources/patent-us20240114610-dim-before-section.md:increase said light intensity and/or color saturation of said light effects during a further period immediately after the start of said second section … and gradually reduce said increase during said further period.",
+   "v2": "覆した"
+  },
+  {
+   "id": "R06",
+   "when": "サビ・ギターソロ",
+   "then": "ムービングを客席側へ向ける（目潰し）",
+   "why": "サビでムービングで観客を照らすと一体感が出る。客席向きの目潰しは盛り上がりの象徴。",
+   "source": "bwc-stage-lighting-craft/sources/kplan-live-lighting-column.md:歌のサビの際にムービングライトで観客を照らすことで、その場の一体感を演出します。／bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:観客側に向けて点灯する“目潰しライト”は盛り上がりの象徴。",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R07",
+   "when": "ブレイク（曲中で一瞬だけ無音になる部分）",
+   "then": "ブレイクでは色か動きを変える。暗転は 3 割程度にとどめ、無音が 1 拍以上ある時だけ暗転",
+   "why": "break の切替 98 件中、暗くなるのは 30%・色が変わるのは 71%。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=74s（a01 01:14・Green outline fixtures and scanning lasers during ）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=66s（a02 01:06・Deep saturated red wash silencing the main video w）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=37s（a03 00:37・Blinding white LED wall flashes and rapid beam mov）／v1: bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:このタイミングに合わせて照明を切り替えると、曲全体に緩急と迫力が生まれます。／曲の終わりやブレイク（無音の瞬間）で使うと、緊張感と余韻が生まれる。",
+   "v2": "修正"
+  },
+  {
+   "id": "R08",
+   "when": "曲の終わり（最後の音が切れた瞬間）",
+   "then": "最後の音が切れた瞬間に暗転（または逆光のシルエットへ落とす）",
+   "why": "曲の終わりは 74 件中 65% が暗くなり、55% が暗転。v1 を裏づけ。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=228s（a01 03:48・Instant blackout to silhouette lighting as music s）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=204s（a03 03:24・Focused overhead white spotlight on center trio fa）／https://www.youtube.com/watch?v=boYwMFlRapk&t=325s（a04 05:25・Floor fades down to stark white rim backlight silh）／v1: bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:曲の終わりやブレイク（無音の瞬間）で使うと、緊張感と余韻が生まれる。",
+   "v2": "裏づけ"
+  },
+  {
+   "id": "R09",
+   "when": "盛り上がるアウトロの最後",
+   "then": "ストロボを使う（ただし R16 の安全上限内）",
+   "why": "アウトロが盛り上がる曲の最後に用いるとメリハリがつく。",
+   "source": "bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:アウトロが盛り上がる楽曲の最後に用いるとメリハリがつく。",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R10",
+   "when": "『裸』のパート（ドラムだけ・ベースだけ・ボーカルだけ・ギターだけ）",
+   "then": "全体を落としてその奏者にスポット 1 点",
+   "why": "裸のパートにスポットを当てる演出が定番。",
+   "source": "bwc-stage-lighting-craft/sources/shellbys-livehouse-lighting.md:「裸」とは、曲の中でドラムだけ・ベースだけ・ボーカルだけ・ギターだけになるパートのこと。／裸のパートにスポットライトを当てる演出が定番",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R11",
+   "when": "感情が positive かつ arousal が high（速い長調）",
+   "then": "palette を yellow/orange/white 寄りにし、彩度・明るさを上げる",
+   "why": "速い長調の音楽には、より彩度が高く明るく黄みの強い色が選ばれた。",
+   "source": "bwc-synesthesia-music-color/sources/palmer-2013-pnas-pmc.md:faster music in the major mode produced color choices that were more saturated, lighter, and yellower",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R12",
+   "when": "感情が negative かつ arousal が low（遅い短調）",
+   "then": "palette を blue 寄りにし、彩度・明るさを下げる",
+   "why": "遅い短調の音楽には、低彩度で暗く青みの強い色が選ばれた。",
+   "source": "bwc-synesthesia-music-color/sources/palmer-2013-pnas-pmc.md:slower, minor music produced the opposite pattern (choices that were desaturated, darker, and bluer)",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R13",
+   "when": "色を感情から決めるとき全般",
+   "then": "音楽の感情（幸福/悲しい・元気/陰気・強い/弱い・怒り/穏やか）を先に判定し、その感情に合う色を選ぶ",
+   "why": "音楽の感情的連想と選ばれた色の感情的連想の相関は 0.89〜0.99 と強く、色と音楽は感情を介して結びつく。",
+   "source": "bwc-synesthesia-music-color/sources/palmer-2013-pnas-pmc.md:There were strong correlations (0.89 < r < 0.99) between the emotional associations of the music and those of the colors chosen／bwc-synesthesia-music-color/sources/whiteford-2018-bach-to-the-blues.md:emotional mediation hypothesis suggests that color and music are related indirectly through common, higher level, emotional associations",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R14",
+   "when": "幸福/悲しみの判定ができたとき",
+   "then": "幸福なら暖色（red/orange/yellow）、悲しいなら寒色（blue/light_blue）",
+   "why": "暖色の光は明るい主題を、寒色は悲しい主題を示しやすい。",
+   "source": "bwc-stage-lighting-craft/sources/etc-objectives-of-lighting-design.md:Warm-toned light tends to suggest happier themes while cool tones tend to support sadder ones.",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R15",
+   "when": "テンポでしか判断できないとき",
+   "then": "アップテンポなら明るい色、バラードなら落ち着いたトーン",
+   "why": "曲の雰囲気に応じた色で照明と音楽の統一感が生まれる。",
+   "source": "bwc-stage-lighting-craft/sources/kplan-live-lighting-column.md:アップテンポな曲では明るい色を、バラードでは落ち着いたトーンの色を選ぶことで、演出の一貫性を保つことができます。",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R16",
+   "when": "ストロボ・点滅を出すとき",
+   "then": "毎秒 3 回以下、連続 30 秒以内、鮮やかな赤の点滅は避ける",
+   "why": "毎秒 3 回超の点滅は原則避ける（民放連・WCAG）。NODA は毎秒 4 回以下・30 秒以内。毎秒 3〜30 回が発作を最も誘発しやすい。",
+   "source": "bwc-artnet-dmx/sources/tokyo-singi-minporen-quote.txt:ａ 映像や光の点滅は、原則として１秒間に３回を超える使用を避けるとともに／bwc-stage-lighting-craft/sources/epilepsy-society-pse-2023.txt:Between 3 and 30 Hertz (flashes per second) are the／bwc-stage-lighting-craft/sources/noda-topical-tip-15-strobe.txt:they should not be used for more",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R17",
+   "when": "パン/チルトの位置を変えるとき",
+   "then": "スナップせず 1 秒以上のフェードをかけ、速度チャンネルとフェードを同時に遅くしない",
+   "why": "両方遅いとヘッドが遅れて着地が遅くなる。",
+   "source": "bwc-artnet-dmx/sources/uking-8bit-16bit-jerky.md:Give position changes a fade of a second or more instead of snapping.／Use one or the other; if both are slow, the head lags and lands late.",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R18",
+   "when": "区間や感情の判定に自信が無いとき・解析が途切れたとき",
+   "then": "基本キュー（曲の基調色・hold）へ安全に戻す",
+   "why": "busking では舞台を基本キューへ安全に戻す『ライフセーバー』マクロと、曲間を照らす『パント look』を常備する。",
+   "source": "bwc-stage-lighting-craft/sources/etc-organized-improvisation-busking.md:a “lifesaver” macro that safely returns the stage to a base cue.／bwc-stage-lighting-craft/sources/chauvet-tech-talk-busking.md:I have a “punt look” that keeps the stage lit between songs.",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R19",
+   "when": "拍ごとの変化を入れたくなったとき",
+   "then": "すべての拍を光で強調しない。アクセント（低音の瞬間・サビの大きな変化）だけ拾う",
+   "why": "すべての拍を光で強調する必要はなく、音楽だけで十分なときもある。",
+   "source": "bwc-stage-lighting-craft/sources/cmuptm-tom-kenny.md:Every beat does not have to be accented by light. The music can do fine on its own sometimes／bwc-stage-lighting-craft/sources/kplan-live-lighting-column.md:低音が鳴る瞬間や、サビの部分での大きな変化に合わせて照明が点灯すると",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R20",
+   "when": "1 曲の中で色を変えたくなったとき",
+   "then": "1 曲の中で 3〜4 回 look を変えてよい。変える契機はサビ頭のほか verse 頭・ブレイク・pre_chorus・ソロ（R26〜R29）",
+   "why": "「サビでしか変わらない」曲は 84 曲中 1 曲。v1 の『1 曲 1 色』は実演とは合わない。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=19s（a01 00:19・Magenta/red LED strip patterns and front key light）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=27s（a02 00:27・High-contrast monochrome look with graphic text on）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=22s（a03 00:22・Deep blue stage wash and circular floor LED rim li）／v1: bwc-stage-lighting-craft/sources/independent-artist-diy-lighting.md:1曲1色が基本です。1曲の中で何色も切り替えると、目が疲れて印象が散ります。",
+   "v2": "覆した"
+  },
+  {
+   "id": "R21",
+   "when": "色に意味を持たせたいとき",
+   "then": "青=静けさ、赤=熱、オレンジ=温かさ、緑=浮遊感 として使い分ける",
+   "why": "色には共通して伝わる印象がある。",
+   "source": "bwc-stage-lighting-craft/sources/independent-artist-diy-lighting.md:青は静けさ、赤は熱、オレンジは温かさ、緑は浮遊感と、色には共通して伝わる印象があります。",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R22",
+   "when": "次の区間を先読みするとき全般",
+   "then": "次に何が来るかを予測して流れに乗る（判定が付かないうちは現在の look を保つ）",
+   "why": "即興照明の鍵は次に起こることを予測して流れに乗ること。",
+   "source": "bwc-stage-lighting-craft/sources/chauvet-tech-talk-busking.md:The key is to try to anticipate what is going to happen next and to flow with it.",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R23",
+   "when": "Claude が区間ごとに色を返すとき",
+   "then": "valence（x 軸）と energy/arousal（y 軸）の 2 軸の位置から色を決める",
+   "why": "5 秒ごとの区間の valence-arousal の組を 2 次元の色空間で色に写して電球を点灯した先行例がある。",
+   "source": "bwc-synesthesia-music-color/sources/color-your-music-mood-readme.md:Valence and Energy are represented in a 2D plane where Valence is the x-axis and Energy the y-axis.／The estimated Valence-Arousal pair for each 5-second music segment can be now represented with a particular color",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R24",
+   "when": "落ちサビ（最後のサビの前に静かに歌うサビ）",
+   "then": "サビの palette を保ったまま明るさを落とし、動きは hold。最後のサビ頭で R04 の開き",
+   "why": "J-POP に多い構成だが、手元の原文に落ちサビの照明の記述は無い。",
+   "source": "（根拠なし・作者の判断待ち）",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R25",
+   "when": "ブリッジ（C メロ）",
+   "then": "基調色から一度外した色（pink/blue 等）に変え、明るさを中程度に落とす",
+   "why": "手元の原文にブリッジの照明の記述は無い。",
+   "source": "（根拠なし・作者の判断待ち）",
+   "v2": "据え置き（観察で検証していない）"
+  },
+  {
+   "id": "R26",
+   "when": "verse 頭（サビ明けで歌が戻る所を含む）",
+   "then": "明るさを落とし、歌い手にスポット。サビの look から降りる",
+   "why": "サビ頭に次いで多い切替契機（135 件）。暗くなる 24%・スポット 39%。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=19s（a01 00:19・Magenta/red LED strip patterns and front key light）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=27s（a02 00:27・High-contrast monochrome look with graphic text on）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=22s（a03 00:22・Deep blue stage wash and circular floor LED rim li）",
+   "v2": "新規"
+  },
+  {
+   "id": "R27",
+   "when": "キメ（バンド全員で合わせる一撃）",
+   "then": "白のフラッシュか一瞬の暗転で打ち、1 小節以内に元の look へ戻す（R16 の上限内）",
+   "why": "accent（すぐ戻る変化）の最多はキメ（51 件）。look ごと変えるのは 34 件で少数。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=9s（a01 00:09・Massive firework explosions behind stage and flash）／https://www.youtube.com/watch?v=uDwICkdSryU&t=254s（a09 04:14・Pyrotechnic sparks ignite across stage front with ）／https://www.youtube.com/watch?v=B2olKkOBXvs&t=16s（a11 00:16・brief dark red blackout accent before verse starts）",
+   "v2": "新規"
+  },
+  {
+   "id": "R28",
+   "when": "look を変えたくなった時、直前の切替から 12 秒未満のとき",
+   "then": "変えない（キメなら R27 のアクセントで打つ）",
+   "why": "look の切替間隔は中央値 20〜27 秒、下位 25% でも 12〜13 秒。4 秒おきの切替は実演に無い密度。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=3s（a01 00:03・Teal and magenta lasers beam across the stadium）／https://www.youtube.com/watch?v=_4G5pa1sd2c&t=2s（a02 00:02・Red laser arrays scanning horizontally and diagona）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=6s（a03 00:06・High-intensity white backdrop and sweeping laser b）",
+   "v2": "新規"
+  },
+  {
+   "id": "R29",
+   "when": "曲の頭（最初の音）",
+   "then": "暗い所から一点（スポットかレーザー）で始め、バンド全員が入る所で基調色へ（R10 と同じ向き）",
+   "why": "song_start 68 件でスポット 49%。全員が入る所で切り替える例が多い。",
+   "source": "観察: https://www.youtube.com/watch?v=_4G5pa1sd2c&t=2s（a02 00:02・Red laser arrays scanning horizontally and diagona）／https://www.youtube.com/watch?v=DE8lACLWMtI&t=6s（a03 00:06・High-intensity white backdrop and sweeping laser b）／https://www.youtube.com/watch?v=boYwMFlRapk&t=6s（a04 00:06・Deep red stage wash with bright white overhead spo）",
+   "v2": "新規"
+  },
+  {
+   "id": "R30",
+   "when": "ジャンルが演歌・歌謡ショー",
+   "then": "サビでも white を足さず、blue と orange（暖色）の入れ替えで山を作る。切替は少なめ（中央値 27 秒おき）",
+   "why": "演歌のサビの色は blue 6・orange 5 で white が上位に無い。",
+   "source": "観察: https://www.youtube.com/watch?v=rXejoHZwNmw&t=115s（a01 01:55・Explosive stadium wash with blue and pink beam arr）／https://www.youtube.com/watch?v=2VuhRk_kecU&t=28s（a05 00:28・Brighter stage illumination with horizontal blue l）／https://www.youtube.com/watch?v=kpEHnz5iASY&t=144s（a06 02:24・Burst of white strobes and sweeping blue/cyan aeri）",
+   "v2": "新規"
+  }
+ ]
+}

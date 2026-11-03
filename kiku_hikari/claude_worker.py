@@ -2,7 +2,7 @@
 
 入力: 直近 30 秒の特徴量の要約（1 秒ごとの音量・明るさ・オンセット密度・テンポ・これまでの区間の履歴）
 出力: Enum 固定の JSON（次の境界まで何秒・次の区間・開き方・色・語彙・溜め・感情 2 軸・情景一語・確信度・理由）
-知識ファイル knowledge/lighting_knowledge.json を system の固定部に置き、プロンプトキャッシュで毎回の入力を小さくする。
+知識ファイル knowledge/lighting_knowledge_v2.json（既定・v1 は lighting_knowledge.json） を system の固定部に置き、プロンプトキャッシュで毎回の入力を小さくする。
 鍵は .env か環境変数 ANTHROPIC_API_KEY からだけ読む。ログには応答の本文と遅延を残し、ヘッダは残さない。
 """
 from __future__ import annotations
@@ -18,7 +18,9 @@ from pydantic import BaseModel, Field
 
 MODEL_DEFAULT = "claude-opus-5-5"
 ONSET_FIXED_SCALE = 200.0   # 要約 c の固定尺度（実測: 試験曲 3 本の 1 秒平均が 108〜183）
-KNOWLEDGE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "knowledge", "lighting_knowledge.json")
+KNOWLEDGE_V1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "knowledge", "lighting_knowledge.json")
+# 製品の既定は v2（実演映像 87 本で規則を差し替えた版・2026-11-03 本人決定）。差し替えは tools/import_knowledge.py で上書きするだけ
+KNOWLEDGE_PATH = os.path.join(os.path.dirname(KNOWLEDGE_V1), "lighting_knowledge_v2.json")
 
 
 class Section(str, Enum):
@@ -88,7 +90,7 @@ CONFIDENCE_RULE_D = """
 
 
 def load_knowledge(path: Optional[str] = None) -> str:
-    """path=知識ファイル（JSON でも Markdown でもそのまま渡す）。既定は knowledge/lighting_knowledge.json（v1）"""
+    """path=知識ファイル（JSON でも Markdown でもそのまま渡す）。既定は knowledge/lighting_knowledge_v2.json（v2）"""
     path = path or KNOWLEDGE_PATH
     if os.path.isfile(path):
         with open(path, encoding="utf-8") as f:

@@ -37,6 +37,9 @@ def truth_for(music: str, song: str, which: str = "timbre") -> list[float]:
     return [round((a + min(t2, key=lambda b: abs(a - b))) / 2, 2) for a in t1 if t2 and min(abs(a - b) for b in t2) <= 2.0]
 
 
+ROOT_KB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "knowledge")
+
+
 def run_once(music: str, song: str, summary: str, adopt: str, rep: int, seconds: float, color: str = "", knowledge: str = "") -> str:
     """color=色の変種（p1/p2/p3・空=v1）。knowledge=知識ファイル（空=v1）。腕のフォルダ名は <要約>-<採用>[-<色>]-rep<k>"""
     d = os.path.join(OUT, f"{summary}-{adopt}{'-' + color if color else ''}-rep{rep}", song)
@@ -47,10 +50,8 @@ def run_once(music: str, song: str, summary: str, adopt: str, rep: int, seconds:
     os.makedirs(d, exist_ok=True)
     cmd = [sys.executable, "-m", "kiku_hikari.main", "--mode", "claude", "--file", os.path.join(music, f"{song}.wav"), "--no-artnet",
            "--seconds", str(seconds), "--summary", summary, "--adopt", adopt, "--effort", "low", "--logdir", d]
-    if color:
-        cmd += ["--color", color]
-    if knowledge:
-        cmd += ["--knowledge", knowledge]
+    # 製品の既定（e・p2・v2）が変わっても A/B の腕の意味が変わらないよう、色と知識は毎回明示する（空=v1）
+    cmd += ["--color", color or "v1", "--knowledge", knowledge or os.path.join(ROOT_KB, "lighting_knowledge.json")]
     print("走行", summary, adopt, f"rep{rep}", song, flush=True)
     subprocess.run(cmd, cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     return glob.glob(os.path.join(d, "*.jsonl"))[0]
