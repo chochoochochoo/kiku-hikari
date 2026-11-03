@@ -65,3 +65,37 @@ class StingerSpot11:
         a = self.address - 1
         dmx[a:a + 11] = bytes(vals)
         return {"pan8": vals[0], "tilt8": vals[2], "color": vals[4], "gobo": vals[5], "shutter": sh, "dimmer": dim, "speed": vals[8]}
+
+
+# ADJ Dotz Par 9ch モード。出典: ADJ Dotz Par User Manual p.8（9 チャンネルモード）・p.9（カラーマクロ）
+#   1 赤 / 2 緑 / 3 青 / 4 マスターディマー / 5 カラーマクロ / 6 プログラム / 7 プログラム速度・サウンド感度 / 8 ストロボ 遅→速 / 9 ディマーカーブ
+#   5〜7ch は 0 固定（説明書: RGB を使う時はマクロ不可・6ch=000 で灯体側の自動演出を切る）。9ch は 0＝STANDARD に固定
+# 色名→RGB（Stinger の色ホイール 8 色と同じ名前。Par は面の色として Stinger と揃える）
+PAR_RGB = {
+    "white": (255, 255, 255), "red": (255, 0, 0), "orange": (255, 90, 0), "yellow": (255, 200, 0), "green": (0, 255, 0),
+    "blue": (0, 0, 255), "light_blue": (0, 150, 255), "pink": (255, 40, 140),
+}
+PAR_CURVE_STANDARD = 0
+
+
+@dataclass
+class DotzPar9:
+    address: int = 34
+    safety: Safety = field(default_factory=Safety)
+
+    @property
+    def footprint(self) -> int:
+        return 9
+
+    def render(self, dmx: bytearray, *, color: str = "white", dimmer: float = 1.0, shutter: str = "open", strobe: float = 0.0, **_ignored) -> dict:
+        """Stinger と同じ意味の値を受け取る（pan/tilt/gobo/speed は無視）。ストロボは Stinger と同じ上限（Safety.max_strobe_hz_equiv）"""
+        s = self.safety
+        r, g, b = PAR_RGB.get(color, PAR_RGB["white"])
+        dim = 0 if shutter == "closed" else int(max(0, min(s.max_dimmer, round(dimmer * 255))))
+        stb = 0
+        if shutter == "strobe":
+            stb = int(1 + max(0.0, min(s.max_strobe_hz_equiv, strobe)) * 254)   # 1..255 遅→速 のうち上限まで（実機の Hz は未計測）
+        vals = [r, g, b, dim, 0, 0, 0, stb, PAR_CURVE_STANDARD]
+        a = self.address - 1
+        dmx[a:a + 9] = bytes(vals)
+        return {"r": r, "g": g, "b": b, "dimmer": dim, "strobe": stb}
