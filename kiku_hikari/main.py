@@ -27,7 +27,7 @@ import numpy as np
 from . import artnet
 from .change import ChangeDetector
 from .engine import BeatEngine, ForesightEngine
-from .fixtures import DotzPar9, StingerSpot11
+from .fixtures import DotzPar9, Spot1, StingerSpot11, par_pattern, spot_levels
 from .runlog import RunLog
 
 FRAME = 1 / 40.0
@@ -95,6 +95,8 @@ def main(argv=None):
     ap.add_argument("--fixtures", type=int, default=1, help="灯体の台数（アドレスは --address から 11ch ずつ。左右は Pan を対称に）")
     ap.add_argument("--pars", type=int, default=0, help="ADJ Dotz Par（9ch モード）の台数（既定 0＝従来どおり Stinger だけ）。色・明るさ・シャッターは Stinger と同じ値を受ける")
     ap.add_argument("--par-address", type=int, default=34, help="Dotz Par 1 台目の開始アドレス（9ch ずつ。8 台なら 34/43/52/61/70/79/88/97）")
+    ap.add_argument("--spots", type=int, default=0, help="汎用スポット（1ch ディマー）の台数（既定 0）。左→右の順に --spot-address から 1ch ずつ")
+    ap.add_argument("--spot-address", type=int, default=501)
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--no-audio", action="store_true")
     ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす（マイクで聴く）")
@@ -129,11 +131,13 @@ def main(argv=None):
 
     fxs = [StingerSpot11(address=a.address + 11 * i) for i in range(a.fixtures)]
     pars = [DotzPar9(address=a.par_address + 9 * i) for i in range(a.pars)]
-    used = [set(range(f.address, f.address + f.footprint)) for f in fxs + pars]
+    spots = [Spot1(address=a.spot_address + i) for i in range(a.spots)]
+    used = [set(range(f.address, f.address + f.footprint)) for f in fxs + pars + spots]
     all_ch = [c for u in used for c in u]
     if all_ch and (max(all_ch) > 512 or len(all_ch) != len(set(all_ch))):
         print("DMX アドレスが重なるか 512 を超える（--address/--fixtures/--par-address/--pars を見直す）"); log.close(); return 2
-    log.event("rig", stinger=[f.address for f in fxs], par=[p.address for p in pars])
+    log.event("rig", stinger=[f.address for f in fxs], par=[p.address for p in pars], spot=[s.address for s in spots])
+    t_open = -99.0; was_open = False
     fx = fxs[0]
     dmx = bytearray(512)
     viz = None
@@ -255,9 +259,18 @@ def main(argv=None):
                 elif a.fixtures >= 3 and i == a.fixtures - 1 and a.fixtures % 2 == 1:
                     p2["pan"] = 0.5 + 0.3 * (params["pan"] - 0.5)
                 f.render(dmx, **p2)
-            par_w = None
-            for p in pars:   # Par は面の色: 3 モードとも Stinger と同じ色・明るさ・シャッター（① は白・② は表の色・③ は Claude の色）
-                par_w = p.render(dmx, **params)
+            par_w = None; spot_w = []
+            if pars or spots:   # Par＝面の色の配置パターン、スポット＝人を抜く明るさ（fixtures.par_pattern / spot_levels）
+                fsx = getattr(engine, "fs", None)
+                sec = fsx.section_now.value if (fsx and a.mode == "claude") else ""
+                if extra.get("opened") and not was_open:   # 開いた瞬間（立ち上がり）だけ
+                    t_open = now
+                was_open = bool(extra.get("opened"))
+                bar = engine.beat_count // engine.bpb if a.mode == "claude" else 0
+                pat = par_pattern(len(pars), a.mode, params["color"], fsx.next_color.value if (fsx and a.mode == "claude") else "", sec, bar, now - t_open)
+                for p, (rgb, k) in zip(pars, pat):
+                    w_ = p.render(dmx, **{**params, "dimmer": params["dimmer"] * k}, rgb=rgb); par_w = par_w or w_
+                spot_w = [s.render(dmx, v) for s, v in zip(spots, spot_levels(len(spots), a.mode, params["dimmer"], level, sec, params.get("shutter", "open")))]
             if sender is not None:
                 sender.send(dmx)
             frames += 1
@@ -269,7 +282,9 @@ def main(argv=None):
                                             "tame": extra.get("tame", "-"), "scene": fsx.scene_word if fsx else "", "reason": fsx.reason if fsx else ""})
             if frames % 8 == 0:
                 log.event("dmx", frame=frames, **written, level=round(level, 3), phase=round(st["phase"], 3), tempo_bpm=st["tempo_bpm"], **(extra if a.mode != "direct" else {}),
-                          **({"par": [par_w["r"], par_w["g"], par_w["b"], par_w["dimmer"]]} if par_w else {}))
+                          **({"par": [par_w["r"], par_w["g"], par_w["b"], par_w["dimmer"]]} if par_w else {}),
+                          **({"pars": [list(dmx[p.address - 1:p.address + 3]) for p in pars]} if pars else {}),
+                          **({"spot": spot_w} if spot_w else {}))
             next_t += FRAME
             sleep = next_t - time.perf_counter()
             if sleep > 0:

@@ -87,10 +87,11 @@ class DotzPar9:
     def footprint(self) -> int:
         return 9
 
-    def render(self, dmx: bytearray, *, color: str = "white", dimmer: float = 1.0, shutter: str = "open", strobe: float = 0.0, **_ignored) -> dict:
-        """Stinger と同じ意味の値を受け取る（pan/tilt/gobo/speed は無視）。ストロボは Stinger と同じ上限（Safety.max_strobe_hz_equiv）"""
+    def render(self, dmx: bytearray, *, color: str = "white", dimmer: float = 1.0, shutter: str = "open", strobe: float = 0.0, rgb=None, **_ignored) -> dict:
+        """Stinger と同じ意味の値を受け取る（pan/tilt/gobo/speed は無視）。rgb=(r,g,b) を渡すと色名より優先（グラデーション用）。
+        ストロボは Stinger と同じ上限（Safety.max_strobe_hz_equiv）"""
         s = self.safety
-        r, g, b = PAR_RGB.get(color, PAR_RGB["white"])
+        r, g, b = rgb if rgb is not None else PAR_RGB.get(color, PAR_RGB["white"])
         dim = 0 if shutter == "closed" else int(max(0, min(s.max_dimmer, round(dimmer * 255))))
         stb = 0
         if shutter == "strobe":
@@ -99,3 +100,66 @@ class DotzPar9:
         a = self.address - 1
         dmx[a:a + 9] = bytes(vals)
         return {"r": r, "g": g, "b": b, "dimmer": dim, "strobe": stb}
+
+
+# Par 8 台の配置パターン（2026-11-03 本人指示）。対の色＝奇偶の 2 色目（色相の反対寄り・色ホイール 8 色の中から）
+PAR_PAIR = {"white": "blue", "red": "blue", "orange": "light_blue", "yellow": "pink", "green": "pink", "blue": "white", "light_blue": "orange", "pink": "light_blue"}
+
+
+def blend(c1: str, c2: str, x: float) -> tuple:
+    a, b = PAR_RGB.get(c1, PAR_RGB["white"]), PAR_RGB.get(c2, PAR_RGB["white"])
+    return tuple(int(round(p + (q - p) * x)) for p, q in zip(a, b))
+
+
+def par_pattern(n: int, mode: str, color: str, next_color: str = "", section: str = "", bar: int = 0, since_open: float = 9.0) -> list:
+    """Par n 台（左→右）の [(rgb, 明るさの係数 0..1)]。① 全台白・② 奇偶 2 色・③ 区間で選ぶ"""
+    if n <= 0:
+        return []
+    if mode == "beat":
+        return [(PAR_RGB["white"], 1.0)] * n
+    if mode != "claude":                                      # ② / direct: 表の色と対の色を奇偶に
+        pair = PAR_PAIR.get(color, "white")
+        return [(PAR_RGB.get(color if i % 2 == 0 else pair, PAR_RGB["white"]), 1.0) for i in range(n)]
+    nxt = next_color if next_color and next_color != color else PAR_PAIR.get(color, "white")
+    if section == "pre_chorus":                               # 主色→次の色のグラデーション（次の色替えの予告）
+        out = [(blend(color, nxt, i / max(1, n - 1)), 1.0) for i in range(n)]
+    elif section == "chorus":                                 # 奇偶 2 色・小節ごとに入れ替え
+        out = [(PAR_RGB.get(color if (i + bar) % 2 == 0 else nxt, PAR_RGB["white"]), 1.0) for i in range(n)]
+    else:
+        out = [(PAR_RGB.get(color, PAR_RGB["white"]), 1.0)] * n
+    if since_open < 0.5:                                      # 開いた直後: 中央から外へ 0.5 秒で広げる
+        c = (n - 1) / 2; reach = since_open / 0.5 * (c + 0.5)
+        out = [(rgb, 1.0 if abs(i - c) <= reach else 0.0) for i, (rgb, _) in enumerate(out)]
+    return out
+
+
+# 汎用スポット（PrefLight の Generic/Spot・1ch ディマー）。区間ごとに点ける台数（中央から）
+SPOT_COUNT = {"intro": 2, "verse": 2, "pre_chorus": 4, "chorus": 6, "bridge": 2, "interlude": 4, "break": 0, "outro": 2, "unknown": 6}
+
+
+@dataclass
+class Spot1:
+    address: int = 501
+
+    @property
+    def footprint(self) -> int:
+        return 1
+
+    def render(self, dmx: bytearray, level: float) -> int:
+        v = int(max(0, min(255, round(level * 255))))
+        dmx[self.address - 1] = v
+        return v
+
+
+def spot_levels(n: int, mode: str, dimmer: float, level: float, section: str = "", shutter: str = "open") -> list:
+    """スポット n 台（左→右）の明るさ。① 一定 50%・② 音量に追従・③ 区間で台数（中央から）×エンジンの明るさ（溜め・開き）"""
+    if n <= 0:
+        return []
+    if mode == "beat":
+        return [0.5] * n
+    if mode != "claude":
+        return [0.3 + 0.7 * level] * n
+    if shutter == "closed":
+        return [0.0] * n
+    k = min(n, SPOT_COUNT.get(section, n)); lo = (n - k) // 2
+    return [dimmer if lo <= i < lo + k else 0.0 for i in range(n)]

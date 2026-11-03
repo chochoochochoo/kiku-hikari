@@ -159,3 +159,7 @@
 ### V202611.037 – 20261103-15:26:19
 **指示:** （入口経由・本人の合図）PrefLight に Dotz Par 8 台を配置・保存した stage.plt を確認してコミット。不備があればコミットせず入口へ。追記: スポット 6 台の 501〜506 が DMX アドレスか灯体 ID かを見分け、Stinger 1/12/23 と食い違うなら入口へ
 **変更:** preflight/stage.plt（15:10 保存）を確認してコミット。Stinger Spot 3 台 = 1/12/23（11ch）、Dotz Par 100 が 8 台 = 34/43/52/61/70/79/88/97（pMod=3＝9ch）、Generic/Spot 6 台 = 501〜506（制御は cDim の 1ch のみ）。501〜506 は Stinger と同じ bsch 属性＝DMX 開始アドレス。1〜105 と 501〜506 で重なりなし。注意: kiku-hikari は 512ch 全部を送るので、501〜506 には 0 が届き、スポットはこちらの出力中は消灯になる
+
+### V202611.038 – 20261103-15:32:12
+**指示:** （入口経由・本人の決定）スポット 6 台（501〜506・1ch）をモードに連動（--spots・既定 0・開始アドレス指定可・③ は Claude の判断に沿う・①② は公平に）。追加: Par 8 台に配置パターン（奇偶 2 色・グラデーション・中央から開く）。最小実装・安全上限は据え置き・hardware-notes に 1 段落
+**変更:** fixtures.py に PAR_PAIR・blend・par_pattern・Spot1・SPOT_COUNT・spot_levels、DotzPar9.render に rgb=。main.py に --spots（既定 0）・--spot-address（既定 501）・アドレス検査にスポットを追加・開いた瞬間の検出・dmx ログに pars（全台の RGB＋ディマー）と spot。① Par 全台白・スポット一定 50%／② Par 表の色と対の色の奇偶・スポット音量追従／③ Par は区間で全台同色・pre_chorus グラデーション・chorus 奇偶の小節ごと入れ替え・開いた直後 0.5 秒は中央から外へ、スポットは区間で台数（verse 中央 2・pre_chorus 4・chorus 6・break 0）。試験: パターン関数の単体、beat/rules/direct/claude × --fixtures 3 --pars 8 --spots 6 が exit 0、--spot-address 100 で重なりを検出（exit 2）。05_mixture_funk の ③ 80 秒では、Claude の区間が verse/intro だけで、Par は全台同色 98%・中央から開く 2%、スポットは中央 2 台 92%
