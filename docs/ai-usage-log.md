@@ -30,3 +30,4 @@
 | 11/3 04:0x | 動画パイロットの前の確認: agy の CLI で YouTube の映像を見られるか（同じ質問を 2 回） | Gemini（agy・gemini-3.8-flash-medium） | 2 回とも見られない（can_view_video=false）。パイロットは BWC学習 セッションに移管し、確認の結果を ~/Claude/bwc-japan2026/gakushu/ に渡した |
 | 11/3 〜11:44 | 知識ファイル v2 の材料: 公式ライブ映像 87 本（URL 渡しのみ）の照明の変化を時刻つきで書き出す（BWC学習 セッション） | Gemini（gemini-3.8-flash・YouTube URL 入力） | 書き出しを Claude が集計して規則 30 本に差し替えた。色は Gemini の文章記述からの集計で、人の目では未検品（確信度 中） |
 | 11/3 13:13 | v2 をリポジトリに取り込み（`tools/import_knowledge.py`）、製品の既定を e＋p2＋v2 に切り替え | Claude Code | 本人の決定（A/B 60 走行の後）。製品の判断に入る AI は Claude だけのまま |
+| 11/3 13:21 | 知識 v2 第 2 版（映像 100 本・演歌 13 本を追加）の取り込み | Claude Code（材料の書き出しは BWC学習 側の Gemini・gemini-3.8-flash） | 同じコマンドで上書き。11_enka を 1 回の疑似走行で確認 |

@@ -143,3 +143,7 @@
 ### V202611.033 – 20261103-13:13:29
 **指示:** （入口経由・本人の決定）製品 ③ の既定を e＋色 p2 に。知識 v2 を差し替えやすい形でリポジトリに取り込み、README の数字（F・間に合い・色）を v2＋e+p2 の実測に。eval-beat に決定の経緯を 1 段落。完了の合図を入口へ
 **変更:** tools/import_knowledge.py を新設（文面は元のまま・~/Claude/ と gakushu/ の場所だけ除く・第 2 版も同じコマンドで上書き）→ knowledge/lighting_knowledge_v2.json（規則 30・出典 URL 54）。claude_worker の既定の知識を v2 に（KNOWLEDGE_V1 は残す）。main の既定を --summary e・--color p2 に。ab_run は色と知識を毎回明示（省略時 v1）。README: Claude の答えを「何小節」に・知識ファイルの節を v2 に（キャッシュ約 17,800）・評価の行を追加・他モデルの節に Gemini の映像書き出しを追記。ai-usage-log に 2 行。eval-beat に決定の段落。25 秒の疑似走行で summary=e・color=p2・v2 を確認（exit 0）
+
+### V202611.034 – 20261103-13:21:05
+**指示:** （入口経由）知識 v2 第 2 版（映像 100 本・規則 30）を import_knowledge.py で上書き。README の 87→100 本・pre_chorus 14→16 秒・R30 の演歌を反映。11_enka を 1 回の疑似走行で確認
+**変更:** knowledge/lighting_knowledge_v2.json を第 2 版で上書き（25 行の差分）。README の知識ファイルの節を 100 本・pre_chorus 約 16 秒前・演歌（白を足さず 2 色・幕と背景）に。ai-usage-log に 1 行。11_enka 80 秒（既定 e＋p2＋v2）: exit 0・応答 14・失敗 0・色は橙 51%/青 41%/白 8%（3 種・変化 5 回）・開き 4・cache_read 18,016

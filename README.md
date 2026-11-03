@@ -27,7 +27,7 @@ Claude API（`claude-opus-5-5`・`kiku_hikari/claude_worker.py`）が約 4 秒�
 - **灯体と安全**（`fixtures.py`）: ADJ Stinger Spot 11ch の表（取説の画像ページを Claude Code が読んで転記）、Pan/Tilt のスルーレート制限、ストロボ上限、明るさ上限
 - **Art-Net**（`artnet.py`）: ArtPoll で EtherMX を探し、ArtDmx をユニキャスト。標準ライブラリのみ
 - **ログ**（`runlog.py`）: 拍・テンポ・位相・Claude の要求/応答・DMX・遅れを 1 本の JSONL に時刻つきで。動画の字幕とブラインド判定の照合はここから作る
-- **知識ファイル**（`knowledge/lighting_knowledge_v2.json`・既定）: 照明家の判断を「区間×感情×色・動き・溜め」の規則 30 本に。v1（`lighting_knowledge.json`・25 本）は研究の原文（Palmer 2013 の音楽→色、先読みフェードの特許、点滅の安全基準）から Claude Code のサブエージェントが下書きした。v2 では、公式ライブ映像 87 本を Gemini に時刻つきで書き出させ、それを Claude が集計して規則を差し替えた。例: サビは白が主役、1 曲に 4 色、ブレイクで暗転するのは 3 割だけ。各規則の出典は動画の URL（時刻つき）。差し替えは `tools/import_knowledge.py` で上書きするだけ。system の固定部に置いてプロンプトキャッシュに乗せる（実測: 毎回約 17,800 トークンがキャッシュ読み）
+- **知識ファイル**（`knowledge/lighting_knowledge_v2.json`・既定）: 照明家の判断を「区間×感情×色・動き・溜め」の規則 30 本に。v1（`lighting_knowledge.json`・25 本）は研究の原文（Palmer 2013 の音楽→色、先読みフェードの特許、点滅の安全基準）から Claude Code のサブエージェントが下書きした。v2 では、公式ライブ映像 100 本を Gemini に時刻つきで書き出させ、それを Claude が集計して規則を差し替えた。例: サビは白が主役、1 曲に 4 色、pre_chorus はサビの約 16 秒前に色を変える、ブレイクで暗転するのは 3 割だけ、演歌はサビで白を足さず 2 色で幕と背景で山を作る。各規則の出典は動画の URL（時刻つき）。差し替えは `tools/import_knowledge.py` で上書きするだけ。system の固定部に置いてプロンプトキャッシュに乗せる（実測: 毎回約 17,800 トークンがキャッシュ読み）
 - **疑似モード**（`--file` と `--viz`）: 灯体もマイクも無い人が WAV を入れて画面の仮想灯体で見られる
 - **公開リポジトリの守り**（`tools/secret_scan.py`・`.claude/settings.json`・GitHub Actions）: Claude Code の PreToolUse フック／git の pre-commit・pre-push／CI の 3 層で鍵・個人情報を止める。敵対レビュア 2 体・Codex・Gemini の監査で見つかった抜け道 30 件超を反映し、`tools/test_secret_scan.py`（一時クローンで 39 ケース）で機械確認
 - **評価を先に**（`docs/eval-blind.md`）: 第三者 3 人のブラインド判定（同じ曲で ① 拍連動／② ルール表／③ Claude を A/B/C に匿名化）
