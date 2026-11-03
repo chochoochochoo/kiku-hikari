@@ -151,3 +151,7 @@
 ### V202611.035 – 20261103-14:43:17
 **指示:** （入口経由・本人の指示）ADJ Dotz Par 8 台を 9ch モードで追加（RGB＋マスター・5〜7ch は 0・ストロボは Stinger と同じ安全弁・ディマーカーブ固定）。fixtures と main に（既定 0 台）・Stinger 3 台と同時出力・stage.plt の更新・hardware-notes に 1 節・①②③ での Par の使い方を決める
 **変更:** fixtures.py に DotzPar9 と PAR_RGB（9ch=STANDARD 固定）。main.py に --pars（既定 0）・--par-address（既定 34）・起動時のアドレス重なり/512 超え検査（exit 2）・rig のログ・dmx ログに par。Par は 3 モードとも Stinger と同じ色・明るさ・シャッター（① 白／② 表の色／③ Claude の色に揃える・別役なし）。hardware-notes に節。試験: beat/rules/claude/direct × --fixtures 3 --pars 8 が exit 0、--par-address 30 で重なりを検出し exit 2、DMX の並びを単体で確認。stage.plt は本人が PrefLight で配置中（14:39 時点で Par 4 台・2 台未設定）のため未コミット
+
+### V202611.036 – 20261103-15:23:43
+**指示:** （入口経由）知識 v2 第 3 版（規則 34・R31〜R34 は electronic_rock の時だけ）を取り込み、README の映像本数を 110 本（電子ロック 10 本は別枠）に。ジャンル条件つき規則が無視も誤発動もしないことを 1 曲の疑似走行で確認
+**変更:** import_knowledge.py で上書き（R01〜R30 は差分なし・R31〜R34 を追加・出典 URL 65）。load_knowledge の出力に R31〜R34 が入ることを確認（無視されない）。ジャンルは要約に無く、Claude が音から判断する（R30 の演歌と同じ経路）。03_idol_dance 80 秒（既定 e＋p2）: exit 0・応答 15・失敗 0・cache_read 19,582・理由に電子ロック/R31〜34 の言及 0・色は青 37%/水色 35%/白 28% の 3 色（第 1 版の同じ曲 3 回の範囲内＝水色 25〜42%）。README を規則 34 本・110 本・キャッシュ約 19,600 に。ai-usage-log に 1 行
