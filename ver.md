@@ -163,3 +163,7 @@
 ### V202611.038 – 20261103-15:32:12
 **指示:** （入口経由・本人の決定）スポット 6 台（501〜506・1ch）をモードに連動（--spots・既定 0・開始アドレス指定可・③ は Claude の判断に沿う・①② は公平に）。追加: Par 8 台に配置パターン（奇偶 2 色・グラデーション・中央から開く）。最小実装・安全上限は据え置き・hardware-notes に 1 段落
 **変更:** fixtures.py に PAR_PAIR・blend・par_pattern・Spot1・SPOT_COUNT・spot_levels、DotzPar9.render に rgb=。main.py に --spots（既定 0）・--spot-address（既定 501）・アドレス検査にスポットを追加・開いた瞬間の検出・dmx ログに pars（全台の RGB＋ディマー）と spot。① Par 全台白・スポット一定 50%／② Par 表の色と対の色の奇偶・スポット音量追従／③ Par は区間で全台同色・pre_chorus グラデーション・chorus 奇偶の小節ごと入れ替え・開いた直後 0.5 秒は中央から外へ、スポットは区間で台数（verse 中央 2・pre_chorus 4・chorus 6・break 0）。試験: パターン関数の単体、beat/rules/direct/claude × --fixtures 3 --pars 8 --spots 6 が exit 0、--spot-address 100 で重なりを検出（exit 2）。05_mixture_funk の ③ 80 秒では、Claude の区間が verse/intro だけで、Par は全台同色 98%・中央から開く 2%、スポットは中央 2 台 92%
+
+### V202611.039 – 20261103-15:37:38
+**指示:** （入口経由・本人の決定）サビ判定の手当て: ③ で e の「あと N 小節」が 0 に達した所から一定小節を chorus 扱いにして Par のサビパターンとスポット 6 台を出す・手前 2 小節は pre_chorus 扱い・外れは隠さない。05 か 03 の 80 秒で同色/中央 2 台の割合と、サビ扱いの時刻と耳の正解のずれを報告
+**変更:** main.py に --chorus-bars（既定 8・0 で無効）。Claude の境界を採った時だけ記録し（救済は除く）、過ぎたら 8 小節を chorus 扱い・手前 2 小節を pre_chorus 扱いにして Par/スポットに渡す（Stinger と Claude の区間名は不変）。ログに light_chorus と lsec。05: 全台同色 98%→49%・中央 2 台 92%→41%・サビ扱いの開始 23.5/43.5 秒（耳との差 +0.4/+1.5）。03: 全台同色 37%・中央 2 台 29%・開始 5 回（差 −1.4〜+1.5）。hardware-notes に追記。並列走行のパスの書き方の誤りで 2 回空走りした（コードの不具合ではない）

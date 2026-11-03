@@ -97,6 +97,7 @@ def main(argv=None):
     ap.add_argument("--par-address", type=int, default=34, help="Dotz Par 1 台目の開始アドレス（9ch ずつ。8 台なら 34/43/52/61/70/79/88/97）")
     ap.add_argument("--spots", type=int, default=0, help="汎用スポット（1ch ディマー）の台数（既定 0）。左→右の順に --spot-address から 1ch ずつ")
     ap.add_argument("--spot-address", type=int, default=501)
+    ap.add_argument("--chorus-bars", type=int, default=8, help="③ の Par/スポット: Claude の「あと N 小節」が 0 に達した所からこの小節数をサビ扱い（0=Claude の区間名だけ）。手前 2 小節は pre_chorus 扱い")
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--no-audio", action="store_true")
     ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす（マイクで聴く）")
@@ -138,6 +139,7 @@ def main(argv=None):
         print("DMX アドレスが重なるか 512 を超える（--address/--fixtures/--par-address/--pars を見直す）"); log.close(); return 2
     log.event("rig", stinger=[f.address for f in fxs], par=[p.address for p in pars], spot=[s.address for s in spots])
     t_open = -99.0; was_open = False
+    claude_b = None; chorus_until = -1.0   # Claude が小節数で答えた境界（救済は含めない）と、サビ扱いの終わり
     fx = fxs[0]
     dmx = bytearray(512)
     viz = None
@@ -226,6 +228,8 @@ def main(argv=None):
                 if worker.latest_gen > seen_gen:
                     seen_gen = worker.latest_gen
                     engine.on_foresight(worker.latest, now, asked_at=worker.latest_asked, bar_at_ask=worker.latest_bar)
+                    if engine.last_late is not None:          # Claude の境界を採った時だけ（救済の境界は使わない）
+                        claude_b = engine.boundary_at
                     summarizer.history.append({"t": round(tnow, 1), "section": worker.latest.section_now.value})
                     log.event("foresight_applied", gen=seen_gen, boundary_in=round(engine.boundary_at - now, 1) if engine.boundary_at else None, late=engine.last_late)
             if a.mode == "direct":
@@ -263,6 +267,15 @@ def main(argv=None):
             if pars or spots:   # Par＝面の色の配置パターン、スポット＝人を抜く明るさ（fixtures.par_pattern / spot_levels）
                 fsx = getattr(engine, "fs", None)
                 sec = fsx.section_now.value if (fsx and a.mode == "claude") else ""
+                if a.mode == "claude" and a.chorus_bars > 0:   # サビ判定の手当て: 境界の後 N 小節＝chorus・手前 2 小節＝pre_chorus（外れも隠さない）
+                    bar_s = period_s * engine.bpb
+                    if claude_b is not None and now >= claude_b:
+                        chorus_until = claude_b + a.chorus_bars * bar_s; claude_b = None
+                        log.event("light_chorus", at=round(now - t_start, 2), until=round(chorus_until - t_start, 2))
+                    if now < chorus_until:
+                        sec = "chorus"
+                    elif claude_b is not None and claude_b - now <= 2 * bar_s:
+                        sec = "pre_chorus"
                 if extra.get("opened") and not was_open:   # 開いた瞬間（立ち上がり）だけ
                     t_open = now
                 was_open = bool(extra.get("opened"))
@@ -284,7 +297,7 @@ def main(argv=None):
                 log.event("dmx", frame=frames, **written, level=round(level, 3), phase=round(st["phase"], 3), tempo_bpm=st["tempo_bpm"], **(extra if a.mode != "direct" else {}),
                           **({"par": [par_w["r"], par_w["g"], par_w["b"], par_w["dimmer"]]} if par_w else {}),
                           **({"pars": [list(dmx[p.address - 1:p.address + 3]) for p in pars]} if pars else {}),
-                          **({"spot": spot_w} if spot_w else {}))
+                          **({"spot": spot_w} if spot_w else {}), **({"lsec": sec} if (pars or spots) and a.mode == "claude" else {}))
             next_t += FRAME
             sleep = next_t - time.perf_counter()
             if sleep > 0:
