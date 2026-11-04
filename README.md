@@ -47,7 +47,8 @@ Claude API（`claude-opus-5-5`・`kiku_hikari/claude_worker.py`）が約 4 秒�
 計画書・勝ち筋の整理・分野の調査（演出照明・拍追従・楽曲構造・Art-Net・共感覚）・自作の試験曲 10 曲（生成音源・非公開・入力素材としてのみ使用）。運営 FAQ「事前の計画・構想は認めるが、リポジトリの外で行う」に従い、ここには入れていません。持ち込みデータは試験曲（非公開）だけです。
 
 **音源（評価とデモ動画の曲）**: 試験曲の 03・05・07 は、参加前（10/14）に作った**以前作ったもの**の自作曲です。既存曲の雰囲気（ジャンル・テンポ感）を参考に、ACE-Step v1 3.5B（作者の手元の機材でローカル実行・Apache License 2.0）で生成しました。歌詞は独自で、歌詞とプロンプトは作者の指示で Claude が書きました。メロディは ACE-Step の生成で、既存曲の音源・歌詞・アーティスト名は入力していません。試験曲 11 は期間中（11/3）に、試験曲 14 は期間中（11/4）に同じ方法で生成しました。音源ファイルはリポジトリに含めていません（デモ動画の中で鳴らすだけ）。
-外部素材: 『旅』／mastinchannel／https://mastinchannel.com/tabi/ （AI 生成・商用利用可・クレジット任意）。第 2 段のブラインド判定と本編の動画で使用し、ファイルは同梱しません。これ以外に、VOICEVOX・効果音などの外部素材は使っていません。
+外部素材: 『旅』／mastinchannel／https://mastinchannel.com/tabi/ （AI 生成・商用利用可・クレジット任意）。第 2 段のブラインド判定と本編の動画で使用し、ファイルは同梱しません。
+ナレーション: 11/6 の本編動画のナレーションは VOICEVOX で合成（話者「冥鳴ひまり」ノーマル・クレジット「VOICEVOX:冥鳴ひまり」。利用規約どおり、このクレジットを動画末尾のカードと概要欄に表示）。曲は mastinchannel の『旅』（AI 生成のフリー楽曲）と、期間中に生成した自作曲。効果音は不使用。合成音声のナレーションは運営に確認し、可と回答を得ています（11/4）。
 
 ## 審査の対象（Claude で作った部分）と、既製・外部のもの（対象外）の境界
 運営から「審査の対象は Claude で作ったもののみ。その識別をリポジトリで明記してほしい」と回答（11/4）があったので、ここで分けます。
@@ -55,7 +56,7 @@ Claude API（`claude-opus-5-5`・`kiku_hikari/claude_worker.py`）が約 4 秒�
 | 区分 | もの | 備考 |
 |---|---|---|
 | **Claude で作った（期間中・審査の対象）** | `kiku_hikari/` の全コード、`tools/` の全スクリプト、`.claude/settings.json` のフック、GitHub Actions、`knowledge/` の知識ファイル v1・v2（規則の本文と出典の整理）、`README.md`・`docs/`・`ver.md` の文書、`logs/public/` のログ、試験曲 11・14 の歌詞とプロンプト | 書いたのは Claude Code。他モデルは監査と材料集めだけ（上の「他モデルは…」の節） |
-| **既製（使っただけ・対象外）** | PrefLight（kuwatec の照明ビジュアライザ）、Art-Net ノード（EtherMX）、灯体（ADJ Stinger Spot・Dotz Par・1ch のスポット）、Python 3.12 と numpy・sounddevice・soundfile・pydantic・anthropic などのライブラリ、Claude API そのもの、ACE-Step v1 3.5B（音源の生成モデル） | `preflight/stage.plt` は PrefLight の画面に灯体を置いたシーンで、作者が GUI で作った（コードではない） |
+| **既製（使っただけ・対象外）** | PrefLight（kuwatec の照明ビジュアライザ）、Art-Net ノード（EtherMX）、灯体（ADJ Stinger Spot・Dotz Par・1ch のスポット）、Python 3.12 と numpy・sounddevice・soundfile・pydantic・anthropic などのライブラリ、Claude API そのもの、ACE-Step v1 3.5B（音源の生成モデル）、VOICEVOX（本編動画のナレーションの合成音声・クレジットは上の節） | `preflight/stage.plt` は PrefLight の画面に灯体を置いたシーンで、作者が GUI で作った（コードではない） |
 | **外部・期間前の素材（対象外）** | 試験曲 03・05・07（期間前 10/14 に生成）、『旅』（mastinchannel・上の行）、公式ライブ映像 110 本（知識 v2 の観察対象。URL だけで、動画は同梱しない） | 音源・映像のファイルはリポジトリに入れない |
 | **期間中に作ったが Claude の出力ではない（対象外）** | 試験曲 11・14 の音源そのもの（ACE-Step が生成。歌詞とプロンプトは上の行のとおり Claude）、デモ動画の実写部分（撮影は作者） | デモ動画の中で光っている動きと字幕の判断は、上の行の Claude のコードと Claude API の出力 |
 
