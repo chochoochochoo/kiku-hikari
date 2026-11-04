@@ -340,3 +340,8 @@
 ### V202611.067 – 20261105-01:21:12
 **指示:** （BWC編集 から）動画で使うのは曲 1 の ③改と曲 2 の ③改a なので、その 2 本の「Q3 で選んだ人数／判定者の総数」を主に送り、③改b は別に添える
 **変更:** 次回再開ポイント 12 番の数字の送り方をこの指定に合わせた。フォームのラベルと実モードの対応は BWC編集 のメッセージにあるが、リポジトリには書かない（運用の決まり）
+
+---
+### V202611.068 – 20261105-02:31:57
+**指示:** （入口から）/code-review ultra が全履歴 73,103 行（logs/public の jsonl が大半）で上限 8,000 行を超えたので、コード本体だけが差分になる基準ブランチ review-base をローカルに作る（push しない・main の作業ツリーは元どおり・作業中は他の変更をしない）
+**変更:** 作業ツリーを共有しているため checkout --orphan は使わず、一時インデックス（GIT_INDEX_FILE）に main を読み込み、kiku_hikari・tools・docs・knowledge・README.md・.claude を外して write-tree → commit-tree で親なしのコミット 09adde1 を作り、ローカルブランチ review-base を付けた（中身: logs 21 本・ver.md・preflight・.github・LICENSE・.gitignore・.env.example）。`git diff --stat review-base main` は 37 files changed, 4197 insertions。作業ツリー・HEAD（main）・追跡ファイルは未変更。review-base は push しない（pre-push の検査対象にもしない）
