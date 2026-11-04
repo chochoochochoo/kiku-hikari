@@ -66,7 +66,7 @@
    - 撮影の引数: `--mode claude --fixtures 3 --pars 8 --spots 6`
    - 方針: 改良は既定の挙動に入れ、改良前の挙動は `--profile old` で出す（**まだ実装していない**。③ の実装で一緒に作る）。撮影に伝達済み。
    - 別フォルダに取り出す案は、.env の複写が禁止のルールで止められるため不採用にした。
-4. 【新曲】~/Claude/bwc-japan2026/music/jpop/ と Dropboxwc-hantei-20261103\music\ に置いてある。どちらも 88 秒・期間中の 11/4 に生成・歌詞 txt つき。
+4. 【新曲】~/Claude/bwc-japan2026/music/jpop/ と ~/Dropbox/bwc-hantei-20261103/music/ に置いてある。どちらも 88 秒・期間中の 11/4 に生成・歌詞 txt つき。
    - 12_jpop_standard: seed 3333。静かな所と盛り上がる所の差 8.5 dB。
    - 13_idol_pop: seed 2222。差 7.5 dB。
    - 既存の 03/05/07/11 は 2.2〜2.9 dB。測り方は ~/Claude/bwc-japan2026/music/clarity.py（2 秒ごとの音量）。
