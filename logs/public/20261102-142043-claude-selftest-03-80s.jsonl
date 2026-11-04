@@ -1,6 +1,6 @@
 {"t":0.0004,"kind":"run_start","wall":"2026-11-02T14:20:43.546"}
-{"t":2.5142,"kind":"artnet_discover","nodes":[{"ip":"10.106.195.240","mac":"00:1b:c5:0b:c3:f0","outputs":[]},{"ip":"10.106.195.239","mac":"00:1b:c5:0b:c3:ef","outputs":[0]}]}
-{"t":2.5146,"kind":"config","node":"10.106.195.239","universe":0,"address":1,"mode":"claude","bpm":null,"audio":true}
+{"t":2.5142,"kind":"artnet_discover","nodes":[{"ip":"x.x.x.x","mac":"xx:xx:xx:xx:xx:xx","outputs":[]},{"ip":"x.x.x.x","mac":"xx:xx:xx:xx:xx:xx","outputs":[0]}]}
+{"t":2.5146,"kind":"config","node":"x.x.x.x","universe":0,"address":1,"mode":"claude","bpm":null,"audio":true}
 {"t":5.2842,"kind":"claude_config","model":"claude-opus-5-5","effort":"low","every":4.0}
 {"t":6.1644,"kind":"audio_start","device":18,"fs":48000,"block":1200}
 {"t":6.4148,"kind":"play","path":"C:/Users/pc/Claude/bwc-japan2026/music/jpop/03_idol_dance.wav","device":14}

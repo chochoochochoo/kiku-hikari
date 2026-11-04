@@ -11,7 +11,7 @@
 
 - **当事者か**: 作者は公共ホールの舞台設備（音響・映像・照明）を本業で設計しており、照明オペレーターを置けない現場を設計の側から見てきた。
 - **日本特有か**: 公民館・学校の体育館・地域のホールでは、照明の設備はあっても操作する人がいない例を、作者は設計の仕事で多く見てきた（統計ではなく作者の経験）。知識ファイルは日本語で、J-POP・アイドル・ミクスチャー・演歌の公式ライブ映像の観察から作った。
-- **期間後も使われるか**: Windows の PC 1 台と市販の Art-Net ノードで動き、灯体が無くても画面で確かめられる（`--viz`）。知識ファイルは `tools/import_knowledge.py` で差し替えられるので、会場や照明家が自分の規則を足して使い続けられる。ライセンスは `LICENSE`。
+- **期間後も使われるか**: Windows の PC 1 台と市販の Art-Net（TCP/IP 上の照明プロトコル）ノードで動き、灯体が無くても画面で確かめられる（`--viz`）。知識ファイルは `tools/import_knowledge.py` で差し替えられるので、会場や照明家が自分の規則を足して使い続けられる。ライセンスは `LICENSE`。
 
 ## 審査員向けの目次（試行錯誤はリポジトリに残しています）
 | 知りたいこと | 場所 |
@@ -134,7 +134,7 @@ py -3.12 tools/beat_eval.py <wav のフォルダ>                               
   - 2層目 git の pre-commit / pre-push（クローン直後に `python tools/install_hooks.py`。コミット名義も noreply アドレスに設定し、全履歴を1回検査する）
   - 3層目 GitHub Actions（`.github/workflows/secret-scan.yml`・push ごとに全履歴）と GitHub の secret scanning / push protection
 - 作者の本名・住所・社名などの拒否語はリポジトリ外 `~/.kiku-hikari-denylist.txt` に置く（無い機械では警告が出る）
-- 実行ログは `logs/` に出し、公開するものだけ `logs/public/` に置く（そこだけ追跡され、検査を通る）
+- 実行ログは `logs/` に出し、公開するものだけ `logs/public/` に置く（そこだけ追跡され、検査を通る）。公開ログと `docs/hardware-notes.md` では、Art-Net ノードと PC の IP・MAC を `x.x.x.x` に伏せている（Art-Net 規格の 10.x 系の機器アドレスで自宅の LAN ではないが、実値は出さない。他の欄は不変）
 - 抜け道の試験: `python tools/test_secret_scan.py`（一時クローンで 39 ケース。敵対レビュー 2 体・Codex・Gemini の監査で見つかった抜け道を全部含む）
 
 ## 提出に向けて残っていること（11/2 時点）

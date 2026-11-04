@@ -1,6 +1,6 @@
 {"t":0.0021,"kind":"run_start","wall":"2026-11-02T14:14:53.537"}
-{"t":2.5169,"kind":"artnet_discover","nodes":[{"ip":"10.106.195.240","mac":"00:1b:c5:0b:c3:f0","outputs":[]},{"ip":"10.106.195.239","mac":"00:1b:c5:0b:c3:ef","outputs":[0]}]}
-{"t":2.5172,"kind":"config","node":"10.106.195.239","universe":0,"address":1,"mode":"beat","bpm":null,"audio":true}
+{"t":2.5169,"kind":"artnet_discover","nodes":[{"ip":"x.x.x.x","mac":"xx:xx:xx:xx:xx:xx","outputs":[]},{"ip":"x.x.x.x","mac":"xx:xx:xx:xx:xx:xx","outputs":[0]}]}
+{"t":2.5172,"kind":"config","node":"x.x.x.x","universe":0,"address":1,"mode":"beat","bpm":null,"audio":true}
 {"t":3.0649,"kind":"audio_start","device":18,"fs":48000,"block":1200}
 {"t":3.3159,"kind":"play","path":"C:/Users/pc/Claude/bwc-japan2026/music/jpop/05_mixture_funk.wav","device":14}
 {"t":3.3176,"kind":"audio","rms_db":-56.37,"centroid":6094.8,"flux_low":0.2762,"peak":0.0051,"blocks":9}

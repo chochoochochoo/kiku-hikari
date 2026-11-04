@@ -1,5 +1,5 @@
 {"t":0.0004,"kind":"run_start","wall":"2026-11-04T16:44:46.552"}
-{"t":0.0012,"kind":"config","node":"10.10.10.10","universe":0,"address":1,"mode":"claude","bpm":null,"audio":true}
+{"t":0.0012,"kind":"config","node":"x.x.x.x","universe":0,"address":1,"mode":"claude","bpm":null,"audio":true}
 {"t":0.0013,"kind":"rig","stinger":[1,12,23],"par":[34,43,52,61,70,79,88,97],"spot":[501,502,503,504,505,506]}
 {"t":3.4669,"kind":"claude_config","model":"claude-opus-5-5","effort":"low","every":4.0,"summary":"e","adopt":"strict","knowledge":"lighting_knowledge_v2.json","color":"p2"}
 {"t":3.9881,"kind":"audio_start","device":"file:C:/Users/pc/Claude/bwc-japan2026/music/jpop/14_dance_rock.wav","fs":48000,"block":1200}

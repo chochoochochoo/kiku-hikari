@@ -1,5 +1,5 @@
 {"t":0.0003,"kind":"run_start","wall":"2026-11-04T16:37:14.655"}
-{"t":0.001,"kind":"config","node":"10.10.10.10","universe":0,"address":1,"mode":"rules","bpm":null,"audio":true}
+{"t":0.001,"kind":"config","node":"x.x.x.x","universe":0,"address":1,"mode":"rules","bpm":null,"audio":true}
 {"t":0.0011,"kind":"rig","stinger":[1,12,23],"par":[34,43,52,61,70,79,88,97],"spot":[501,502,503,504,505,506]}
 {"t":0.5427,"kind":"audio_start","device":"file:C:/Users/pc/Claude/bwc-japan2026/music/ext/tabi_mastinchannel.wav","fs":48000,"block":1200}
 {"t":0.5427,"kind":"loop_start"}
