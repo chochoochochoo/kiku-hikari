@@ -140,7 +140,7 @@ def main(argv=None):
         print("DMX アドレスが重なるか 512 を超える（--address/--fixtures/--par-address/--pars を見直す）"); log.close(); return 2
     log.event("rig", stinger=[f.address for f in fxs], par=[p.address for p in pars], spot=[s.address for s in spots])
     t_open = -99.0; was_open = False
-    claude_b = None; chorus_until = -1.0   # Claude が小節数で答えた境界（救済は含めない）と、サビ扱いの終わり
+    claude_b = None; chorus_until = -1.0; claude_k = None; lc_start = False   # Claude が小節数で答えた境界（救済は含めない）と、サビ扱いの終わり
     fx = fxs[0]
     dmx = bytearray(512)
     viz = None
@@ -236,6 +236,7 @@ def main(argv=None):
                     engine.on_foresight(worker.latest, now, asked_at=worker.latest_asked, bar_at_ask=worker.latest_bar)
                     if engine.last_late is not None:          # Claude の境界を採った時だけ（救済の境界は使わない）
                         claude_b = engine.boundary_at
+                        claude_k = getattr(worker.latest, "bars_to_boundary", None)   # ③改: 「次の小節頭」と答えた境界か
                     summarizer.history.append({"t": round(tnow, 1), "section": worker.latest.section_now.value})
                     log.event("foresight_applied", gen=seen_gen, boundary_in=round(engine.boundary_at - now, 1) if engine.boundary_at else None, late=engine.last_late)
             if a.mode == "direct":
@@ -277,6 +278,7 @@ def main(argv=None):
                     bar_s = period_s * engine.bpb
                     if claude_b is not None and now >= claude_b:
                         chorus_until = claude_b + a.chorus_bars * bar_s; claude_b = None
+                        lc_start = True
                         log.event("light_chorus", at=round(now - t_start, 2), until=round(chorus_until - t_start, 2))
                     if now < chorus_until:
                         sec = "chorus"
@@ -290,12 +292,16 @@ def main(argv=None):
                 slv = spot_levels(len(spots), a.mode, params["dimmer"], level, sec, params.get("shutter", "open"))
                 if look is not None and fsx is not None:   # ③改（--profile new）: 明暗・溜め・キメ・手のフェード・回ごとの色（kiku_hikari/look.py）
                     bar_s = period_s * engine.bpb
-                    sec = look.section(sec, feat["rms_db"], dt)
+                    sec = look.section(sec, feat["rms_db"], dt, now=now, bar_s=bar_s, window_start=lc_start, near=(claude_k == 1 and lc_start))
+                    lc_start = False
+                    for why, at in look.events:
+                        log.event("look_chorus", why=why, at=round(at - t_start, 2))
+                    look.events.clear()
                     if look.push_onset(st.get("onset", 0.0), beat, level, now, bar_s, sec):
                         log.event("look_hit", at=round(now - t_start, 2))
                     params, pat, slv = look.apply(sec=sec, now=now, dt=dt, period_s=period_s, bar=bar, color=params["color"],
                                                   next_color=fsx.next_color.value, params=params, pat=pat, spots=slv,
-                                                  to_boundary=(claude_b - now) if claude_b is not None else None)
+                                                  to_boundary=(claude_b - now) if claude_b is not None else None, pulse=engine.level)
                     written = fx.render(dmx, **params)   # Stinger を書き換えた値で出し直す
                     for i, f in enumerate(fxs[1:], 1):
                         p2 = dict(params)
