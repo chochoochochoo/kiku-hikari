@@ -186,7 +186,7 @@ def main(argv=None):
 
     t_start = time.perf_counter(); next_t = t_start; t_prev = t_start
     log.event("loop_start")  # これ以降の at= は loop_start からの秒（曲の頭）
-    frames = beats = 0
+    frames = beats = 0; send_fail = 0
     feat = {"rms_db": -80.0, "centroid": 0.0, "flux_low": 0.0, "peak": 0.0}
     level = 0.0; st = {"tempo_bpm": 0.0, "phase": 0.0, "beat": False, "confidence": 0.0, "onset": 0.0}; extra = {}
     try:
@@ -273,7 +273,7 @@ def main(argv=None):
                     p2["pan"] = 0.5 + 0.3 * (params["pan"] - 0.5)
                 f.render(dmx, **p2)
             par_w = None; spot_w = []
-            if pars or spots:   # Par＝面の色の配置パターン、スポット＝人を抜く明るさ（fixtures.par_pattern / spot_levels）
+            if pars or spots or look is not None:   # Par＝面の色の配置パターン、スポット＝人を抜く明るさ（fixtures.par_pattern / spot_levels）
                 fsx = getattr(engine, "fs", None)
                 sec = fsx.section_now.value if (fsx and a.mode == "claude") else ""
                 if a.mode == "claude" and a.chorus_bars > 0:   # サビ判定の手当て: 境界の後 N 小節＝chorus・手前 2 小節＝pre_chorus（外れも隠さない）
@@ -303,7 +303,7 @@ def main(argv=None):
                         log.event("look_hit", at=round(now - t_start, 2))
                     params, pat, slv = look.apply(sec=sec, now=now, dt=dt, period_s=period_s, bar=bar, color=params["color"],
                                                   next_color=fsx.next_color.value, params=params, pat=pat, spots=slv,
-                                                  to_boundary=(claude_b - now) if claude_b is not None else None, pulse=engine.level)
+                                                  to_boundary=(claude_b - now) if (claude_b is not None and claude_b > now) else None, pulse=engine.level)   # 過ぎた境界は渡さない（--chorus-bars 0 で claude_b が戻らず、負の値で毎フレーム暗転していた）
                     written = fx.render(dmx, **params)   # Stinger を書き換えた値で出し直す
                     for i, f in enumerate(fxs[1:], 1):
                         p2 = dict(params)
@@ -316,7 +316,12 @@ def main(argv=None):
                     w_ = p.render(dmx, **{**params, "dimmer": params["dimmer"] * k}, rgb=rgb); par_w = par_w or w_
                 spot_w = [s.render(dmx, v) for s, v in zip(spots, slv)]
             if sender is not None:
-                sender.send(dmx)
+                try:
+                    sender.send(dmx)
+                except OSError as e:               # LAN が一瞬切れても輪は止めない。1 フレーム落として続ける
+                    send_fail += 1
+                    if send_fail in (1, 10, 100) or send_fail % 1000 == 0:
+                        log.event("artnet_error", n=send_fail, error=repr(e)[:120])
             frames += 1
             if viz is not None and frames % 2 == 0:
                 fsx = getattr(engine, "fs", None)
@@ -328,20 +333,33 @@ def main(argv=None):
                 log.event("dmx", frame=frames, **written, level=round(level, 3), phase=round(st["phase"], 3), tempo_bpm=st["tempo_bpm"], **(extra if a.mode != "direct" else {}),
                           **({"par": [par_w["r"], par_w["g"], par_w["b"], par_w["dimmer"]]} if par_w else {}),
                           **({"pars": [list(dmx[p.address - 1:p.address + 3]) for p in pars]} if pars else {}),
-                          **({"spot": spot_w} if spot_w else {}), **({"lsec": sec} if (pars or spots) and a.mode == "claude" else {}))
+                          **({"spot": spot_w} if spot_w else {}), **({"lsec": sec} if (pars or spots or look is not None) and a.mode == "claude" else {}))   # Stinger だけの走行（審査員の --viz）でも ③改 の区間を記録する
             next_t += FRAME
             sleep = next_t - time.perf_counter()
             if sleep > 0:
                 time.sleep(sleep)
             else:
                 next_t = time.perf_counter(); log.event("late", by_ms=round(-sleep * 1000, 1))
-    finally:
+    finally:                                   # 後片付けは段ごとに守る（1 段の失敗で残りが飛ばないように）
         if sender is not None:
-            sender.blackout(); sender.close(); log.event("blackout")
+            try:
+                sender.blackout(); log.event("blackout")
+            except OSError as e:
+                log.event("artnet_error", n=send_fail + 1, error=repr(e)[:120], at="blackout")
+            try:
+                sender.close()
+            except OSError:
+                pass
         if player is not None:
-            player.stop()
+            try:
+                player.stop()
+            except Exception as e:
+                log.event("stop_error", what="player", error=repr(e)[:120])
         if audio is not None:
-            audio.stop(); log.event("audio_stop", dropped=audio.dropped)
+            try:
+                audio.stop(); log.event("audio_stop", dropped=audio.dropped)
+            except Exception as e:
+                log.event("stop_error", what="audio", error=repr(e)[:120])
         el = time.perf_counter() - t_start
         log.event("summary", frames=frames, beats=beats, seconds=round(el, 2), fps=round(frames / max(1e-6, el), 1), tempo_bpm=st["tempo_bpm"])
         log.close()

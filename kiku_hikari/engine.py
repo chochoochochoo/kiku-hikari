@@ -82,10 +82,10 @@ class ForesightEngine(BeatEngine):
     def step(self, dt: float, phase: float, period_s: float, loudness: float, now: float = 0.0) -> dict:
         base = super().step(dt, phase, period_s, loudness)
         fs = self.fs
+        self.period_s, self.phase = period_s, phase   # 予測が無い間も更新する（最初の予測を秒に直す時に既定の 0.5 秒・位相 0 が使われていた）
         if fs is None:
             return {**base, "tame": "none", "opened": False}
         bar_s = period_s * self.bpb
-        self.period_s, self.phase = period_s, phase
         # 開き: 予測境界の直前の小節頭〜直後の小節頭のうち、境界に近い方
         if self.boundary_at is not None and self.open_at is None and now >= self.boundary_at - bar_s:
             beats_into_bar = (self.beat_count - 1) % self.bpb + phase

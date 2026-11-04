@@ -17,7 +17,7 @@ PRE_PUSH = """#!/bin/sh
 top=$(git rev-parse --show-toplevel)
 while read local_ref local_sha remote_ref remote_sha; do
   if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then continue; fi   # リモートの ref 削除
-  case "$remote_ref" in refs/tags/*) sh "$top/tools/secret_scan.sh" --object "$local_sha" || exit 2; continue;; esac
+  case "$remote_ref" in refs/tags/*) sh "$top/tools/secret_scan.sh" --history || exit 2; continue;; esac   # タグ: 指す先だけでなく、未 push の手前のコミットも含めて全履歴を見る
   if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
     sh "$top/tools/secret_scan.sh" --history || exit 2
   else

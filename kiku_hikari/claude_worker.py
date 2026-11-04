@@ -132,7 +132,8 @@ class ClaudeWorker:
     def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None, variant: str = "a", knowledge: Optional[str] = None, color: str = "v1"):
         import anthropic
         key = load_env_key()
-        self.client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
+        # timeout と再試行: 既定（600 秒×2 回）だと回線が詰まった時に最長 30 分 inflight のまま新しい予測が止まる。実測の遅延は中央値 2.5 秒・最大 6.4 秒（189 回）なので 10 秒で切り、再試行はしない（次の依頼は --every 秒後に出る）
+        self.client = anthropic.Anthropic(api_key=key, timeout=10.0, max_retries=0) if key else anthropic.Anthropic(timeout=10.0, max_retries=0)
         self.model, self.effort, self.log = model, effort, log
         self.system = [
             {"type": "text", "text": SYSTEM_FIXED + (CONFIDENCE_RULE_D if variant in ("d", "e", "f") else "") + (BAR_RULE_E if variant in ("e", "f") else "") + COLOR_RULES[color]},
@@ -178,6 +179,10 @@ class ClaudeWorker:
                 if self.log: self.log.event("claude_refusal", gen=gen, latency=round(dt, 3))
                 return
             fs: Foresight = resp.parsed_output
+            if fs is None:                     # 構造化出力が取れなかった返答（max_tokens 到達など）は「返答なし」。latest に入れると速い輪で属性参照に失敗して止まる
+                self.errors += 1
+                if self.log: self.log.event("claude_error", gen=gen, error="parsed_output is None (stop_reason=%s)" % resp.stop_reason, latency=round(dt, 3))
+                return
             u = resp.usage
             with self._lock:
                 if gen > self.latest_gen:          # 古い世代の返答は捨てる
