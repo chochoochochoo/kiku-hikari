@@ -98,6 +98,7 @@ def main(argv=None):
     ap.add_argument("--spots", type=int, default=0, help="汎用スポット（1ch ディマー）の台数（既定 0）。左→右の順に --spot-address から 1ch ずつ")
     ap.add_argument("--spot-address", type=int, default=501)
     ap.add_argument("--chorus-bars", type=int, default=8, help="③ の Par/スポット: Claude の「あと N 小節」が 0 に達した所からこの小節数をサビ扱い（0=Claude の区間名だけ）。手前 2 小節は pre_chorus 扱い")
+    ap.add_argument("--profile", choices=["new", "old"], default="new", help="claude モード: 見せ方（既定 new=第 2 段の改良・kiku_hikari/look.py／old=改良前の ③・タグ blind2-old と同じ挙動）")
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--no-audio", action="store_true")
     ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす（マイクで聴く）")
@@ -147,6 +148,11 @@ def main(argv=None):
         from .viz import Viz
         viz = Viz()
     engine = ForesightEngine(adopt=a.adopt) if a.mode == "claude" else BeatEngine()
+    look = None
+    if a.mode == "claude" and a.profile == "new":
+        from .look import Look
+        look = Look()
+    log.event("profile", profile=a.profile if a.mode == "claude" else "-")
     worker = summarizer = None
     if a.mode == "claude":
         from .claude_worker import ClaudeWorker, FeatureSummarizer
@@ -281,9 +287,26 @@ def main(argv=None):
                 was_open = bool(extra.get("opened"))
                 bar = engine.beat_count // engine.bpb if a.mode == "claude" else 0
                 pat = par_pattern(len(pars), a.mode, params["color"], fsx.next_color.value if (fsx and a.mode == "claude") else "", sec, bar, now - t_open)
+                slv = spot_levels(len(spots), a.mode, params["dimmer"], level, sec, params.get("shutter", "open"))
+                if look is not None and fsx is not None:   # ③改（--profile new）: 明暗・溜め・キメ・手のフェード・回ごとの色（kiku_hikari/look.py）
+                    bar_s = period_s * engine.bpb
+                    sec = look.section(sec, feat["rms_db"], dt)
+                    if look.push_onset(st.get("onset", 0.0), beat, level, now, bar_s, sec):
+                        log.event("look_hit", at=round(now - t_start, 2))
+                    params, pat, slv = look.apply(sec=sec, now=now, dt=dt, period_s=period_s, bar=bar, color=params["color"],
+                                                  next_color=fsx.next_color.value, params=params, pat=pat, spots=slv,
+                                                  to_boundary=(claude_b - now) if claude_b is not None else None)
+                    written = fx.render(dmx, **params)   # Stinger を書き換えた値で出し直す
+                    for i, f in enumerate(fxs[1:], 1):
+                        p2 = dict(params)
+                        if i % 2 == 1:
+                            p2["pan"] = 1.0 - params["pan"]
+                        elif a.fixtures >= 3 and i == a.fixtures - 1 and a.fixtures % 2 == 1:
+                            p2["pan"] = 0.5 + 0.3 * (params["pan"] - 0.5)
+                        f.render(dmx, **p2)
                 for p, (rgb, k) in zip(pars, pat):
                     w_ = p.render(dmx, **{**params, "dimmer": params["dimmer"] * k}, rgb=rgb); par_w = par_w or w_
-                spot_w = [s.render(dmx, v) for s, v in zip(spots, spot_levels(len(spots), a.mode, params["dimmer"], level, sec, params.get("shutter", "open")))]
+                spot_w = [s.render(dmx, v) for s, v in zip(spots, slv)]
             if sender is not None:
                 sender.send(dmx)
             frames += 1
