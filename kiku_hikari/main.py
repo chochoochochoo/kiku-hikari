@@ -99,6 +99,8 @@ def main(argv=None):
     ap.add_argument("--spot-address", type=int, default=501)
     ap.add_argument("--chorus-bars", type=int, default=8, help="③ の Par/スポット: Claude の「あと N 小節」が 0 に達した所からこの小節数をサビ扱い（0=Claude の区間名だけ）。手前 2 小節は pre_chorus 扱い")
     ap.add_argument("--profile", choices=["new", "old"], default="new", help="claude モード: 見せ方（既定 new=第 2 段の改良・kiku_hikari/look.py／old=改良前の ③・タグ blind2-old と同じ挙動）")
+    ap.add_argument("--chorus-max", type=int, default=16, help="③改: サビの上限（小節・既定 16）。その後の最低 8 小節は暗い verse")
+    ap.add_argument("--no-chorus-first-bars", type=int, default=0, help="③改: 曲の冒頭この小節数はサビに入らない（既定 0=オフ）")
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--no-audio", action="store_true")
     ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす（マイクで聴く）")
@@ -151,8 +153,8 @@ def main(argv=None):
     look = None
     if a.mode == "claude" and a.profile == "new":
         from .look import Look
-        look = Look()
-    log.event("profile", profile=a.profile if a.mode == "claude" else "-")
+        look = Look(chorus_max=a.chorus_max, first_bars=a.no_chorus_first_bars)
+    log.event("profile", profile=a.profile if a.mode == "claude" else "-", chorus_max=a.chorus_max, no_chorus_first_bars=a.no_chorus_first_bars)
     worker = summarizer = None
     if a.mode == "claude":
         from .claude_worker import ClaudeWorker, FeatureSummarizer
@@ -292,7 +294,7 @@ def main(argv=None):
                 slv = spot_levels(len(spots), a.mode, params["dimmer"], level, sec, params.get("shutter", "open"))
                 if look is not None and fsx is not None:   # ③改（--profile new）: 明暗・溜め・キメ・手のフェード・回ごとの色（kiku_hikari/look.py）
                     bar_s = period_s * engine.bpb
-                    sec = look.section(sec, feat["rms_db"], dt, now=now, bar_s=bar_s, window_start=lc_start, near=(claude_k == 1 and lc_start))
+                    sec = look.section(sec, feat["rms_db"], dt, now=now, bar_s=bar_s, window_start=lc_start, near=(claude_k == 1 and lc_start), bar_now=bar)
                     lc_start = False
                     for why, at in look.events:
                         log.event("look_chorus", why=why, at=round(at - t_start, 2))

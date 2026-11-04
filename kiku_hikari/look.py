@@ -21,7 +21,9 @@ FADE_S = {"verse": 1.0, "intro": 1.2, "outro": 1.5, "bridge": 1.2, "pre_chorus":
 
 
 class Look:
-    def __init__(self):
+    def __init__(self, chorus_max: int = 16, first_bars: int = 0):
+        self.chorus_max = chorus_max   # サビの上限（小節）。11/4 夜に 8→16（一般的なサビの長さ・本人決定）
+        self.first_bars = first_bars   # 曲の冒頭この小節数はサビに入らない（0=オフ・第 2 段で比較中）
         self.chorus_n = 0              # これまでに入ったサビの回数
         self.t_chorus = -99.0          # いまのサビの頭
         self.prev_sec = ""
@@ -46,12 +48,12 @@ class Look:
 
     # --- サビ判定（③改のみ・11/4 夜 本人決定） ---
     def section(self, sec: str, rms_db: float, dt: float, now: float = 0.0, bar_s: float = 2.0,
-                window_start: bool = False, near: bool = False) -> str:
+                window_start: bool = False, near: bool = False, bar_now: int = 10**6) -> str:
         """改良前は「Claude の境界の後 8 小節＝サビ」で、境界は 8 小節おきに来るので窓が途切れずにつながり、1 曲のほぼ全部がサビになった
         （撮影の 11/4 17:07 のテイクで曲 14 の 17〜69 秒がずっとサビ＝全灯）。③改では Look がサビを持つ:
           - サビに入るのは、Claude の境界に達してから 1 小節の間に「境界の直前（4 小節）より音量が 1.5 dB 以上上がった」か、
             その境界を Claude が直前に「次の小節頭」（bars_to_boundary=1＝あと 0 小節）と答えていた時（near）
-          - サビは最長 8 小節で打ち切り、その後の最低 8 小節は暗い verse（休み）。休みの間でも、休みの平均より音量が 3 dB 跳ねたらサビに戻す
+          - サビは最長 chorus_max 小節（既定 16）で打ち切り、その後の最低 8 小節は暗い verse（休み）。休みの間でも、休みの平均より音量が 3 dB 跳ねたらサビに戻す
           - それ以外: 曲のそれまでの音量（約 1.5 秒で平滑）の中央値より 6 dB 以上低ければブレイク、pre_chorus（境界の手前 2 小節）はそのまま、他は verse"""
         k_slow = 1 - math.exp(-dt / 1.5); k_fast = 1 - math.exp(-dt / 0.4)
         self.e_db = rms_db if self.e_db is None else self.e_db + (rms_db - self.e_db) * k_slow
@@ -64,14 +66,15 @@ class Look:
             self.cand_until = now + bar_s; self.cand_near = near
         if self.state == "chorus" and now >= self.ch_end:
             self.state = "rest"; self.rest_until = now + 8 * bar_s; self.rest_e = []
+        early = bar_now < self.first_bars              # 冒頭 N 小節はサビに入らない
         if self.state == "rest":
             if self.n_e % 10 == 0:
                 self.rest_e.append(self.e_fast)
-            if len(self.rest_e) >= 4 and self.e_fast >= sum(self.rest_e) / len(self.rest_e) + 3.0:
+            if not early and len(self.rest_e) >= 4 and self.e_fast >= sum(self.rest_e) / len(self.rest_e) + 3.0:
                 self._start_chorus(now, bar_s, "jump")
             elif now >= self.rest_until:
                 self.state = "free"
-        if self.state == "free" and now < self.cand_until:
+        if self.state == "free" and now < self.cand_until and not early:
             before = [e for t, e in self.f_hist if now - 1.0 - 4 * bar_s <= t < now - 1.0]
             rise = self.e_fast - sum(before) / len(before) if before else 0.0
             if rise >= 1.5 or self.cand_near:
@@ -87,7 +90,7 @@ class Look:
         return "verse"
 
     def _start_chorus(self, now: float, bar_s: float, why: str):
-        self.state = "chorus"; self.ch_end = now + 8 * bar_s; self.cand_until = -1.0
+        self.state = "chorus"; self.ch_end = now + self.chorus_max * bar_s; self.cand_until = -1.0
         self.events.append((why, now))
 
     # --- 3. キメ ---
