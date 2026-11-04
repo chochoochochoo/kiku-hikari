@@ -53,16 +53,43 @@
 **指示:** （綴）正解づけと的中率の道具
 **変更:** tools/annotate_sections.py（作者が耳で境界を打つ→sections/*.json・Claude には渡さない）、tools/foresight_eval.py（開き vs 正解・予測/救済の別・余計な開き）。.gitignore は sections/* を除外し sections/public/ だけ追跡
 
-## 次回再開ポイント（2026-11-02 19:4x 更新・『Built with Claude』セッション終了時。3 本に分割: ~/Claude/bwc-japan2026/SESSIONS-BWC.md）
-1. 【開発・本題】③ Claude モードの要約改善: --file（WAV 直接）だと Claude が「intro/verse・低確信」のまま曲 03 のサビ頭（約 68〜76 s）を取り逃がす（logs/public/20261102-180652-claude-song03-rec-3fx.jsonl）。マイク経由の昼の実験では pre_chorus→chorus・slow_close・73 s 開きが出ていた（logs/public/20261102-142830 付近）。疑い: FeatureSummarizer の相対レベル（曲中最大=1）と onset 正規化が --file で効きすぎ／小節数の手がかりが無い。試すこと: 1 秒要約に「拍番号・小節番号」「直近 8 小節の level 平均の推移」を足す、effort medium を比較、conf=low でも open_style≠none なら予測境界を採用
-2. 【開発】Claude なしでも ③ の床が暗い（arousal mid 床 0.3・青）→ PrefLight では青が沈む。ForesightEngine の床を 0.45 に、色ホイールの青は light_blue を優先
-3. 【撮影】PrefLight の 3 灯設定は済み（0.0.0・11ch・1/12/23・横 −2/0/2・高さ 2 m）。録画は `py -3.12 tools/preflight_capture.py --screen <mp4> --seconds N` を先に起動し 2 秒後に main を流す（RDP 接続中のみ）。既存: bwc-japan2026/video/preflight-03-*-3fx-*.mp4（①②③ 各 80 s）。次: 要約改善後に ③ を撮り直し、tools/subtitles.py で字幕
-4. 【監視】AI 生成曲をデモに使えるかのスレッド（薬樹ギン 11/2 19:10）の運営回答を追う。回答次第で公開曲の方針（CC0＋手続き生成）を見直す
-5. 【本人】拒否語リスト ~/.kiku-hikari-denylist.txt に本名・住所・社名を追記（まだ gmail 2 件＋識別子 9 件）。Max 5x コードは別アカウントで適用（既存 Max に当てると置き換わる）。知識ファイルの「根拠なし」を上書き。3 曲の正解づけ（tools/annotate_sections.py）。ブラインド判定の 3 人
-6. 【台湾側の機材】EtherMX・DoctorMX・Mac mini・Win10 機を持参中。PrefLight が家で使えない時の代替（Win10 に PrefLight 試用＋このコード）。いまは不要
-7. 残り: README 英語付記、動画（3 分・字幕・ナレーション日本語）、提出フォーム（CV・11/8 18:00 目標）
-8. 【運用・2026-11-03 本人決定】社名は公開ファイルでは英語表記「I LLC」だけを使う（README・LICENSE などに日本語の社名を新たに書かない。日本語表記は拒否語のまま secret_scan が止める）
-9. 【運用・2026-11-04】履歴を書き換え済み（git filter-repo で拒否語→I LLC・本人が強制 push）。それより前のコミット ID は無効で、旧→新の対応は ~/Claude/bwc-japan2026/rewrite-map-20261104.txt にある。文書に書いた旧 ID は書き換えていない。GitHub に残る旧コミットの除去は、本人が GitHub サポートに依頼する
+## 次回再開ポイント（2026-11-04 午後更新・『BWC開発』→新しい窓『BWC開発新』へ引き継ぎ。分担は ~/Claude/bwc-japan2026/SESSIONS-BWC.md）
+1. 【計画】第 2 段の計画は ~/Claude/bwc-japan2026/PLAN-DAI2DAN.md（本人が決定・日程表つき）。開発の分担は次のとおり。
+   - ① 新曲 2 曲を作る（済み）。
+   - ② 16 時以降に、撮影の CSV（~/Claude/bwc-japan2026/video/blind/form1-responses-20261104.csv）を読んで、改良候補を工数つきで 5 つまで入口へ出す（本人が選ぶ）。←次はここ
+   - ③ 11/5 昼までに、選ばれた改良を実装する。
+   - ④ 11/6〜7 に、README へ第 1 段（改良前）と第 2 段の結果を書く。曲 12・13 は「期間中に生成」と明記する。
+2. 【改良の方向】素人が見て分かるように、明暗と色の差を大げさにする。verse は暗く少数、pre_chorus で溜めを見せ、chorus は全灯＋色替え。
+   - 第 1 段の自由記述: 拍反応 B は「拍に反応しすぎ・メリハリが無い」。③ は「初見のオペレーターが予兆から判断しているよう」「普段は青、盛り上がりでカラフルは良い」。
+   - 改良候補の例: verse/chorus の明暗差を広げる・pre_chorus の溜め・Par の色数・③ の境界の開き方。
+3. 【③旧】改良前の main はタグ blind2-old（ba014d4）。製品コードは 5484f08 から変わっていない。
+   - 撮影の引数: `--mode claude --fixtures 3 --pars 8 --spots 6`
+   - 方針: 改良は既定の挙動に入れ、改良前の挙動は `--profile old` で出す（**まだ実装していない**。③ の実装で一緒に作る）。撮影に伝達済み。
+   - 別フォルダに取り出す案は、.env の複写が禁止のルールで止められるため不採用にした。
+4. 【新曲】~/Claude/bwc-japan2026/music/jpop/ と Dropboxwc-hantei-20261103\music\ に置いてある。どちらも 88 秒・期間中の 11/4 に生成・歌詞 txt つき。
+   - 12_jpop_standard: seed 3333。静かな所と盛り上がる所の差 8.5 dB。
+   - 13_idol_pop: seed 2222。差 7.5 dB。
+   - 既存の 03/05/07/11 は 2.2〜2.9 dB。測り方は ~/Claude/bwc-japan2026/music/clarity.py（2 秒ごとの音量）。
+   - 生成は Mac mini の ~/macmini/audio/gen_dai2.py。候補 6 本は ~/macmini/audio/out/bwc-dai2/ にある。
+   - 耳での区間確認は撮影と本人が行う（開発は音量でしか見ていない）。
+5. 【提出フォーム】下書きは ~/Claude/bwc-japan2026/TEISHUTSU-ANSWERS.md（リポジトリ外）。
+   - テーマは「あなたにしかない深さを」で決定。概要は 497 字で、1 文目は README 冒頭と同じ。
+   - 【要確認】が 3 か所ある: 使った製品（Claude.ai・Desktop など）・公式情報の欄・感想の欄。どれも本人が直す前提。
+   - 第 2 段の結果が出たら、概要と感想を更新する。
+6. 【履歴】11/4 に git filter-repo で拒否語 35 語を「I LLC」へ全履歴で置き換え、本人が強制 push した。
+   - それより前のコミット ID は無効。旧→新の対応は ~/Claude/bwc-japan2026/rewrite-map-20261104.txt にある。
+   - 控え: ~/bwc/kiku-hikari-backup-20261104.git（mirror）。
+   - 旧 ID は GitHub でまだ開ける。サポートへの削除依頼は本人が行う（要点は入口に送付済み）。
+   - 文書に書いた旧 ID は書き換えていない。
+7. 【push の運用】通常の push は開発が行う（pre-push の検査あり）。強制 push はフックが止めるので、本人が `!` で打つ。
+   - 新しい ref（タグなど）は全履歴の検査（rev-list --all）を受ける。手元に古い origin/main が残っていると止まるので、main を先に push してからタグを push する。
+8. 【入れないもの（本人が確定）】先行モニター音の将来案・eval-blind の曲数を 4 にすること・曲 2 の注意書き。
+9. 【README の次の作業】④ の第 1 段/第 2 段の結果、新曲 12・13 の記載（期間中の生成・ACE-Step・番号だけで書き、元曲名は書かない）。
+   - 音源の段落は V202611.043 の形（03/05/07 は以前作ったもの・11 は期間中・音源ファイルは非同梱）。
+   - 英語の付記は未着手で、指示待ち。
+10. 【運用・2026-11-03 本人決定】社名は公開ファイルでは英語表記の「I LLC」だけを使う。拒否語リスト（~/.kiku-hikari-denylist.txt）はそのまま。出力は日本語。
+11. 【未追跡】preflight/stage202611031524.plt は PrefLight の別名保存と判断し、コミットしていない。
+
 ---
 ### V202611.014 – 20261102-14:41:16
 **指示:** （綴）拍追従の立ち上がり改善を試す
@@ -212,3 +239,8 @@
 ### V202611.048 – 20261104-12:57:44
 **指示:** （入口経由）強制 push の後、旧 ID が GitHub で見えるかを確認。見えるならサポートへの削除依頼の要点を入口へ。README のリポジトリ URL と次回再開ポイントに「11/4 履歴書き換え済み・旧 ID は無効」を 1 行
 **変更:** GitHub の commit URL と API で、旧 ID の 03e2642・bcfa455・c597161・a60d530 がまだすべて 200（開ける）だった。fork 0・PR 0。README の 6 行目の後にリポジトリ URL と注記を 1 行、次回再開ポイントに 9 番を追加
+
+---
+### V202611.049 – 20261104-13:02:32
+**指示:** （入口経由・本人決定）BWC開発 を新しい窓「BWC開発新」へ移すため、次回再開ポイントを全面更新し、未コミットを片づける
+**変更:** ver.md の「次回再開ポイント」を 11 項目で書き直した（第 2 段の計画・改良の方向・③旧と --profile old（未実装）・新曲 12/13・提出の下書き・履歴の書き換え・push の運用・入れないもの・README の次の作業）。clarity.py を ~/Claude/bwc-japan2026/music/ へ写した（リポジトリ外）
