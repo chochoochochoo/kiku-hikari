@@ -25,8 +25,9 @@ class Look:
         self.chorus_max = chorus_max   # サビの上限（小節）。11/4 夜に 8→16（一般的なサビの長さ・本人決定）
         self.first_bars = first_bars   # 曲の冒頭この小節数はサビに入らない（0=オフ・第 2 段で比較中）
         self.rule = rule               # サビ入りの条件: rise=第 2 段の判定版（音量の立ち上がり 1.5 dB・タグ blind2-kai）／cue=11/6 の改良（kiku_hikari/cue.py の点数・拍ごと・Claude の格子の上で判定）
-        self.cp = {"thr_win": 3.0, "thr_alone": 9.0, "grid_only": True, "bright_min": 1.0, "early_bars_all": 0, "win_bars": 1.0,
-                   "sup_min_bars": 2, "sup_win": 1.0, "sup_slack": 0.0, "sup_margin": 3.0, "rest_bars": 8, "rest_extra": 3.0, "drop_db": 5.0, "min_gap_bars": 4, **(cue_params or {})}
+        # 既定は tools/chorus_replay.py の再生試験（11/6 03:4x・走行ログ 22 本・正解は作者メモの仮）で サビ入り 9/10・空振り 1 曲 1.2 回 だった組（docs/eval-chorus.md）
+        self.cp = {"thr_win": 4.0, "thr_alone": 9.0, "grid_only": True, "bright_min": 1.0, "early_bars_all": 12, "win_bars": 1.0,
+                   "sup_min_bars": 4, "sup_win": 1.0, "sup_slack": 99.0, "sup_margin": 3.0, "rest_bars": 8, "rest_extra": 3.0, "drop_db": 5.0, "min_gap_bars": 4, **(cue_params or {})}
         self.hist = deque(maxlen=40 * 14)  # cue: 直近 14 秒の (t, rms_db, b_high, flat, onset)
         self.pend = deque()                # cue: まだ採点していない拍の時刻
         self.ch_start = -99.0; self.s_start = 0.0; self.low_run = 0; self.last_det = -99.0; self.win_from = -99.0; self.win_next_chorus = False

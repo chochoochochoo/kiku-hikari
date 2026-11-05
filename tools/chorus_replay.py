@@ -31,6 +31,12 @@ def song_of(path: str) -> str | None:
     for k, v in SONG_OF.items():
         if k in parts[-1] or (len(parts) > 1 and parts[-2] == k):
             return v
+    try:                                                                   # 名前に曲が無いログ（撮影の実機テイク）: 曲のテンポで判別
+        tempo = [json.loads(l)["tempo_bpm"] for l in open(path, encoding="utf-8") if '"kind":"summary"' in l]
+        if tempo and abs(tempo[0] - 126.8) < 2: return "tabi_mastinchannel"
+        if tempo and abs(tempo[0] - 146) < 4: return "14_dance_rock"
+    except Exception:
+        pass
     return None
 
 
@@ -132,18 +138,21 @@ def main():
         bar_s = lg["bar_s"]
         sc = ce.score(dets, chorus, bounds, bar_s)
         sc0 = ce.score(sorted(lg["opens"]), [], bounds, bar_s) if bounds else {}
-        sc1 = ce.score(sorted(set(lg["opens"]) | set(dets)), [], bounds, bar_s) if bounds else {}
+        merged = sorted(lg["opens"]) + [d for d in dets if all(abs(d - o) > 1.0 for o in lg["opens"])]   # 既にある開きの ±1 秒は数えない
+        sc1 = ce.score(sorted(merged), [], bounds, bar_s) if bounds else {}
+        prec = (sum(any(abs(d - b) <= 2.0 for b in bounds) for d in dets) / len(dets)) if (bounds and dets) else None   # サビ入りが耳の境界点に乗る割合
         name = os.path.basename(lp)[:34]
         print(f"{song:20s} {name:34s} dets={len(dets)} " + " ".join(f"{k}={v}" for k, v in sc.items() if k.startswith("ch_") and k != "ch_signed_bar")
-              + (f" | F(ログの開きのみ)={sc0.get('F')} F(開き+サビ入り)={sc1.get('F')}" if bounds else ""))
+              + (f" | F(ログの開きのみ)={sc0.get('F')} F(開き+サビ入り)={sc1.get('F')} 境界に乗ったサビ入り={prec}" if bounds else ""))
         if a.dump:
             print(f"     det={[round(d, 1) for d in dets]} windows={[round(w, 1) for w in lg['windows']]} look={lg['look']} err={sc.get('ch_signed_bar')}")
         if bounds:
             agg["F0"].append(sc0["F"]); agg["F1"].append(sc1["F"])
+            agg.setdefault("prec", []).append(prec if prec is not None else 0.0); agg.setdefault("nd", []).append(len(dets))
         if sc.get("ch_n"):
             agg["n"] += sc["ch_n"]; agg["hit"] += sc["ch_hit"]; agg["miss"] += sc["ch_miss"]; agg["fp"] += sc["ch_fp"]; agg["errs"] += [abs(e) for e in sc["ch_signed_bar"]]
     print(f"== {a.det} {a.params}: サビ {agg['hit']}/{agg['n']}・取り逃し {agg['miss']}・空振り {agg['fp']}・|誤差| 中央値 {np.median(agg['errs']) if agg['errs'] else None} 小節"
-          + (f" | F 開きのみ {np.mean(agg['F0']):.3f} → 開き+サビ入り {np.mean(agg['F1']):.3f} (n={len(agg['F1'])})" if agg["F1"] else ""))
+          + (f" | F 開きのみ {np.mean(agg['F0']):.3f} → 開き+サビ入り {np.mean(agg['F1']):.3f} (n={len(agg['F1'])})・耳の境界に乗ったサビ入り {np.mean(agg['prec']):.2f}（1 曲 {np.mean(agg['nd']):.1f} 回）" if agg["F1"] else ""))
 
 
 if __name__ == "__main__":
