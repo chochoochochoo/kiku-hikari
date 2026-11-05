@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import sys
@@ -101,6 +102,8 @@ def main(argv=None):
     ap.add_argument("--profile", choices=["new", "old", "show"], default="new", help="claude モード: 見せ方（既定 new=第 2 段の改良・kiku_hikari/look.py／old=改良前の ③・タグ blind2-old と同じ挙動／show=全灯版・動画の見せ場用。サビの判定は new と同じで、サビで上段スポット 6 台とムービングを 100% に・verse はさらに暗く少数）")
     ap.add_argument("--chorus-max", type=int, default=16, help="③改: サビの上限（小節・既定 16）。その後の最低 8 小節は暗い verse")
     ap.add_argument("--no-chorus-first-bars", type=int, default=0, help="③改: 曲の冒頭この小節数はサビに入らない（既定 0=オフ）")
+    ap.add_argument("--chorus-rule", choices=["rise", "cue"], default="rise", help="③改のサビ入りの条件: rise=第 2 段の判定版（音量 1.5 dB・タグ blind2-kai）／cue=11/6 の改良（kiku_hikari/cue.py の点数を拍ごとに・Claude の 8 小節格子の上で）")
+    ap.add_argument("--cue-params", default="{}", help="--chorus-rule cue の閾値などの上書き（JSON・tools/chorus_replay.py と同じ名前）")
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--no-audio", action="store_true")
     ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす（マイクで聴く）")
@@ -153,8 +156,9 @@ def main(argv=None):
     look = None
     if a.mode == "claude" and a.profile in ("new", "show"):
         from .look import Look
-        look = Look(chorus_max=a.chorus_max, first_bars=a.no_chorus_first_bars, show=(a.profile == "show"))
-    log.event("profile", profile=a.profile if a.mode == "claude" else "-", chorus_max=a.chorus_max, no_chorus_first_bars=a.no_chorus_first_bars)
+        look = Look(chorus_max=a.chorus_max, first_bars=a.no_chorus_first_bars, show=(a.profile == "show"), rule=a.chorus_rule, cue_params=json.loads(a.cue_params))
+    log.event("profile", profile=a.profile if a.mode == "claude" else "-", chorus_max=a.chorus_max, no_chorus_first_bars=a.no_chorus_first_bars,
+              chorus_rule=a.chorus_rule if look is not None else "-", cue_params=look.cp if (look is not None and a.chorus_rule == "cue") else {})
     worker = summarizer = None
     if a.mode == "claude":
         from .claude_worker import ClaudeWorker, FeatureSummarizer
@@ -294,7 +298,8 @@ def main(argv=None):
                 slv = spot_levels(len(spots), a.mode, params["dimmer"], level, sec, params.get("shutter", "open"))
                 if look is not None and fsx is not None:   # ③改（--profile new）: 明暗・溜め・キメ・手のフェード・回ごとの色（kiku_hikari/look.py）
                     bar_s = period_s * engine.bpb
-                    sec = look.section(sec, feat["rms_db"], dt, now=now, bar_s=bar_s, window_start=lc_start, near=(claude_k == 1 and lc_start), bar_now=bar)
+                    sec = look.section(sec, feat["rms_db"], dt, now=now, bar_s=bar_s, window_start=lc_start, near=(claude_k == 1 and lc_start), bar_now=bar,
+                                       feat={**feat, "onset": st.get("onset", 0.0)}, beat=beat, next_chorus=(fsx.section_next.value == "chorus"))
                     lc_start = False
                     for why, at in look.events:
                         log.event("look_chorus", why=why, at=round(at - t_start, 2))

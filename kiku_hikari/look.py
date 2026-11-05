@@ -21,9 +21,15 @@ FADE_S = {"verse": 1.0, "intro": 1.2, "outro": 1.5, "bridge": 1.2, "pre_chorus":
 
 
 class Look:
-    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False):
+    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False, rule: str = "rise", cue_params: dict | None = None):
         self.chorus_max = chorus_max   # サビの上限（小節）。11/4 夜に 8→16（一般的なサビの長さ・本人決定）
         self.first_bars = first_bars   # 曲の冒頭この小節数はサビに入らない（0=オフ・第 2 段で比較中）
+        self.rule = rule               # サビ入りの条件: rise=第 2 段の判定版（音量の立ち上がり 1.5 dB・タグ blind2-kai）／cue=11/6 の改良（kiku_hikari/cue.py の点数・拍ごと・Claude の格子の上で判定）
+        self.cp = {"thr_win": 3.0, "thr_alone": 9.0, "grid_only": True, "bright_min": 1.0, "early_bars_all": 0, "win_bars": 1.0,
+                   "sup_min_bars": 2, "sup_win": 1.0, "sup_slack": 0.0, "sup_margin": 3.0, "rest_bars": 8, "rest_extra": 3.0, "drop_db": 5.0, "min_gap_bars": 4, **(cue_params or {})}
+        self.hist = deque(maxlen=40 * 14)  # cue: 直近 14 秒の (t, rms_db, b_high, flat, onset)
+        self.pend = deque()                # cue: まだ採点していない拍の時刻
+        self.ch_start = -99.0; self.s_start = 0.0; self.low_run = 0; self.last_det = -99.0; self.win_from = -99.0; self.win_next_chorus = False
         self.show = show               # 全灯版（--profile show・11/5 本人決定・動画の見せ場用）: サビで上段スポット 6 台とムービングを 100% に、verse はさらに暗く少数。サビの判定（section）は new と同じ
         self.chorus_n = 0              # これまでに入ったサビの回数
         self.t_chorus = -99.0          # いまのサビの頭
@@ -49,7 +55,10 @@ class Look:
 
     # --- サビ判定（③改のみ・11/4 夜 本人決定） ---
     def section(self, sec: str, rms_db: float, dt: float, now: float = 0.0, bar_s: float = 2.0,
-                window_start: bool = False, near: bool = False, bar_now: int = 10**6) -> str:
+                window_start: bool = False, near: bool = False, bar_now: int = 10**6,
+                feat: dict | None = None, beat: bool = False, next_chorus: bool = False) -> str:
+        if self.rule == "cue" and feat is not None:
+            return self._section_cue(sec, feat, dt, now, bar_s, window_start, beat, next_chorus, bar_now)
         """改良前は「Claude の境界の後 8 小節＝サビ」で、境界は 8 小節おきに来るので窓が途切れずにつながり、1 曲のほぼ全部がサビになった
         （撮影の 11/4 17:07 のテイクで曲 14 の 17〜69 秒がずっとサビ＝全灯）。③改では Look がサビを持つ:
           - サビに入るのは、Claude の境界に達してから 1 小節の間に「境界の直前（4 小節）より音量が 1.5 dB 以上上がった」か、
@@ -93,6 +102,76 @@ class Look:
     def _start_chorus(self, now: float, bar_s: float, why: str):
         self.state = "chorus"; self.ch_end = now + self.chorus_max * bar_s; self.cand_until = -1.0
         self.events.append((why, now))
+
+    # --- サビ判定（11/6 の改良・rule="cue"）: tools/chorus_replay.py の det_hybrid と同じ手順 ---
+    def _section_cue(self, sec, feat, dt, now, bar_s, window_start, beat, next_chorus, bar_now) -> str:
+        """拍ごとに kiku_hikari/cue.py の点数を出し、Claude の境界（8 小節の格子）に達してから win_bars 小節の間（手前 1 拍も）は閾値 thr_win、
+        それ以外は thr_alone（grid_only なら入らない）。曲のそれまでの中央値より bright_min dB 明るくない所は入らない。
+        サビ中は、格子の上でより強い段差（sup_win）が sup_min_bars 小節以上あとに来たら入り直す（B メロの入りを先にサビと取った時の乗り換え）。
+        サビは chorus_max 小節で終わる（曲の中央値より drop_db 低い小節が 2 つ続けば早く終わる）。その後 rest_bars 小節は閾値 +rest_extra。"""
+        import numpy as np
+        from .cue import cue_score
+        p = self.cp
+        self.hist.append((now, feat["rms_db"], feat.get("b_high", 0.0), feat.get("flat", 0.0), feat.get("onset", 0.0)))
+        k_slow = 1 - math.exp(-dt / 1.5)
+        self.e_db = feat["rms_db"] if self.e_db is None else self.e_db + (feat["rms_db"] - self.e_db) * k_slow
+        self.n_e += 1
+        if self.n_e % 10 == 0 and self.e_db > -70:
+            self.e_hist.append(self.e_db)
+        if window_start:
+            self.win_from = now; self.win_next_chorus = next_chorus
+        if beat:
+            self.pend.append(now)
+        lat = p.get("lat", 0.3)
+        while self.pend and now >= self.pend[0] + lat:
+            b = self.pend.popleft()
+            if len(self.hist) < 40 * 3:
+                continue
+            arr = np.array(self.hist, dtype=np.float64)
+            s, parts = cue_score(arr[:, 0], arr[:, 1], arr[:, 2], arr[:, 3], arr[:, 4], b, bar_s, p)
+            if s is None:
+                continue
+            in_win = -bar_s / 4 <= b - self.win_from < p["win_bars"] * bar_s
+            if in_win:
+                thr = p["thr_win"] - (1.0 if self.win_next_chorus else 0.0)
+                if parts["bright_song"] < p["bright_min"]:
+                    thr += 100
+            else:
+                thr = p["thr_alone"] + (100 if p["grid_only"] else 0)
+            if bar_now < max(self.first_bars, p["early_bars_all"]):
+                thr += 100
+            if self.state == "chorus":
+                if b - self.ch_start >= p["sup_min_bars"] * bar_s and ((in_win and s >= max(thr + p["sup_win"], self.s_start - p["sup_slack"])) or s >= self.s_start + p["sup_margin"]):
+                    self.ch_start = b; self.s_start = s; self.ch_end = b + self.chorus_max * bar_s; self.low_run = 0; self.last_det = b
+                    self.events.append(("cue_again", b))
+                    continue
+                if b >= self.ch_end:
+                    self.state = "rest"; self.rest_until = b + p["rest_bars"] * bar_s; self.low_run = 0
+                elif parts["loud_song"] < -p["drop_db"]:
+                    self.low_run += 1
+                    if self.low_run >= 2 * 4:              # 2 小節（拍 8 つ）続けて静か
+                        self.state = "rest"; self.rest_until = b + p["rest_bars"] * bar_s
+                else:
+                    self.low_run = 0
+                continue
+            if self.state == "rest":
+                if b >= self.rest_until:
+                    self.state = "free"
+                else:
+                    thr += p["rest_extra"]
+            if s >= thr and b - self.last_det >= p["min_gap_bars"] * bar_s:
+                self.state = "chorus"; self.ch_start = b; self.s_start = s; self.ch_end = b + self.chorus_max * bar_s; self.last_det = b
+                self.t_chorus = b
+                self.events.append(("cue", b))
+        if self.state == "chorus":
+            return "chorus"
+        if len(self.e_hist) >= 20:
+            xs = sorted(self.e_hist); thr_b = xs[len(xs) // 2]
+            if self.e_db < thr_b - 6:
+                return "break"
+        if sec == "pre_chorus" and self.state == "free":
+            return "pre_chorus"
+        return "verse"
 
     # --- 3. キメ ---
     def push_onset(self, onset: float, beat: bool, level: float, now: float, bar_s: float, sec: str):

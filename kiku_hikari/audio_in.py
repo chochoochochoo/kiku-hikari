@@ -66,7 +66,13 @@ class AudioIn:
         low = spec[self._low]
         flux = 0.0 if self._prev_low is None else float(np.sum(np.maximum(low - self._prev_low, 0.0)))
         self._prev_low = low
-        return {"rms_db": round(float(20 * np.log10(rms)), 2), "centroid": round(centroid, 1), "flux_low": round(flux, 4), "peak": round(float(np.max(np.abs(x))), 4)}
+        if not hasattr(self, "_high"):                        # サビの手がかり（kiku_hikari/cue.py）: 高域 2〜8 kHz のパワー（dB）と平坦度
+            self._high = (self._freqs >= 2000) & (self._freqs < 8000)
+        pw = power + 1e-12
+        b_high = float(10 * np.log10(pw[self._high].sum()))
+        flat = float(np.exp(np.mean(np.log(pw))) / np.mean(pw))
+        return {"rms_db": round(float(20 * np.log10(rms)), 2), "centroid": round(centroid, 1), "flux_low": round(flux, 4), "peak": round(float(np.max(np.abs(x))), 4),
+                "b_high": round(b_high, 2), "flat": round(flat, 5)}
 
 
 class FileIn:
