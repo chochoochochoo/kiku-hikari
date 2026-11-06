@@ -78,6 +78,17 @@ class ForesightE(Foresight):
     bars_to_boundary: int = Field(ge=1, le=16, description="次の境界は、いまの小節（bar_now）から何小節先の小節頭か（1〜16）")
 
 
+class ForesightC(ForesightE):
+    """--chorus-hints 用（11/6・サビ判定の精度向上）: 境界とは別に「次のサビの頭」を小節数で直接答えさせる（手がかりは system に貼る文・リポジトリには入れない）"""
+    bars_to_chorus: int = Field(ge=0, le=64, description="次のサビの頭は、いまの小節（bar_now）から何小節先の小節頭か（1〜64）。分からない・いまサビの中なら 0")
+
+
+CHORUS_RULE_C = """
+
+サビの頭（bars_to_chorus）: 境界とは別に、次のサビの頭が bar_now から何小節先の小節頭かを bars_to_chorus に答える（分からない・いまサビの中なら 0）。次の手がかりに従う。確信が低くても、範囲に入る値を答えてよい（reason に「仮」と書く）。
+"""
+
+
 SYSTEM_FIXED = """あなたはライブの照明オペレーターの判断を肩代わりする。入力は直近 30 秒の音の特徴量の要約（1 秒ごと）と、これまでの区間の履歴。
 仕事は「構造の先読み」: 次の境界（サビ頭・ブレイク・間奏など）が何秒後に来るか、どんな区間か、どう開くかを予測し、いまの色・動き・溜め・感情を決める。
 原則: 位相や拍は Python が担当する。あなたは秒単位の判断だけをする。確信が無いときは confidence を low にし、seconds_to_boundary は大きめにする（早すぎる開きより遅い開きのほうが安全）。
@@ -129,17 +140,18 @@ COLOR_RULES = {
 
 
 class ClaudeWorker:
-    def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None, variant: str = "a", knowledge: Optional[str] = None, color: str = "v1", extra_rules: str = ""):
+    def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None, variant: str = "a", knowledge: Optional[str] = None, color: str = "v1", extra_rules: str = "", chorus_hints: str = ""):
         import anthropic
         key = load_env_key()
         # timeout と再試行: 既定（600 秒×2 回）だと回線が詰まった時に最長 30 分 inflight のまま新しい予測が止まる。実測の遅延は中央値 2.5 秒・最大 6.4 秒（189 回）なので 10 秒で切り、再試行はしない（次の依頼は --every 秒後に出る）
         self.client = anthropic.Anthropic(api_key=key, timeout=10.0, max_retries=0) if key else anthropic.Anthropic(timeout=10.0, max_retries=0)
         self.model, self.effort, self.log = model, effort, log
         self.system = [
-            {"type": "text", "text": SYSTEM_FIXED + (CONFIDENCE_RULE_D if variant in ("d", "e", "f") else "") + (BAR_RULE_E if variant in ("e", "f") else "") + COLOR_RULES[color] + (extra_rules or "")},   # extra_rules: 曲構成の型の 1 行（--structure-prior・既定は空）
+            {"type": "text", "text": SYSTEM_FIXED + (CONFIDENCE_RULE_D if variant in ("d", "e", "f") else "") + (BAR_RULE_E if variant in ("e", "f") else "") + COLOR_RULES[color] + (extra_rules or "")
+             + ((CHORUS_RULE_C + chorus_hints) if chorus_hints else "")},   # extra_rules: 曲構成の型の 1 行（--structure-prior・既定は空）。chorus_hints: サビの頭の手がかりの文（--chorus-hints・既定は空）
             {"type": "text", "text": load_knowledge(knowledge), "cache_control": {"type": "ephemeral"}},
         ]
-        self.out_model = ForesightE if variant in ("e", "f") else Foresight
+        self.out_model = (ForesightC if chorus_hints else ForesightE) if variant in ("e", "f") else Foresight
         self.generation = 0
         self.latest_asked = None       # 最新の返答の元になった依頼を出した時刻（perf_counter）＝ seconds_to_boundary の基準
         self.latest_bar = None         # その依頼時点の bar_now（e/f）

@@ -20,6 +20,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 import chorus_eval as ce  # noqa: E402
 from kiku_hikari.prior import load_prior, prior_adjust  # noqa: E402
 
+WIN_SRC = {"", "chorus"}   # 再生に使う窓の種類（--windows で絞る: boundary=境界の窓だけ・chorus=サビの頭の窓だけ・both）
 SONG_OF = {"tabi": "tabi_mastinchannel", "song14": "14_dance_rock", "show-tabi": "tabi_mastinchannel", "show-14": "14_dance_rock", "new-14": "14_dance_rock",
            "viz": "tabi_mastinchannel", "pars": "tabi_mastinchannel"}
 
@@ -54,7 +55,7 @@ def parse_log(path: str) -> dict:
     rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
     t0 = next((r["t"] for r in rows if r["kind"] == "loop_start"), 0.0)
     resp = [(r["t"] - t0, r.get("bars_to_boundary"), r.get("section_next"), r.get("confidence")) for r in rows if r["kind"] == "claude_resp"]
-    windows = [r["at"] for r in rows if r["kind"] == "light_chorus"]           # Claude の境界に達した時刻（窓の始まり）
+    windows = [r["at"] for r in rows if r["kind"] == "light_chorus" and r.get("src", "") in WIN_SRC]   # Claude の境界に達した時刻（窓の始まり）。src="chorus" は --chorus-hints の「サビの頭」の窓
     tempo = [r["tempo_bpm"] for r in rows if r["kind"] == "dmx" and r.get("tempo_bpm")]
     bar_s = 240 / float(np.median(tempo)) if tempo else 2.0
     if not windows:                                                             # 古いログ（light_chorus が無い）: 依頼時刻＋答えの小節数から境界を近似（low は採らない＝strict）
@@ -77,6 +78,7 @@ def det_hybrid(feat: dict, p: dict, lg: dict) -> list[float]:
     resp = lg["resp"]; windows = lg["windows"]
     out = []; state = "free"; ch_end = rest_until = -1.0; ch_start = -1.0; s_start = 0.0; low_run = 0
     prior = p.get("_prior"); ch_bar = None   # 曲構成の型（--prior・kiku_hikari/prior.py）。本番の look.py と同じ増減
+    pend = None                              # confirm_bars>0 のとき: (候補の拍, 点数) を持って確認待ち
     for i in range(4 * bpb, len(bt) - 1):
         b = bt[i]; beat_s = bt[i] - bt[i - 1]
         if beat_s <= 0.2 or beat_s > 1.1:
@@ -85,8 +87,17 @@ def det_hybrid(feat: dict, p: dict, lg: dict) -> list[float]:
         s, parts = ce.cue_score(feat, b, bar_s, lat, p)
         if s is None:
             continue
-        w = next((w for w in windows if -beat_s <= b - w < p.get("win_bars", 1.0) * bar_s), None)
+        pre = max(beat_s, p.get("win_pre_bars", 0.0) * bar_s)             # 窓を手前にも広げる（既定は手前 1 拍）
+        w = next((w for w in windows if -pre <= b - w < p.get("win_bars", 1.0) * bar_s), None)
         in_win = w is not None
+        if pend is not None:                                               # 確認待ち（confirm_bars）: 候補から confirm_bars 小節あとも曲の中央値より明るく大きければ、そこで入る
+            if b >= pend[0] + p["confirm_bars"] * bar_s:
+                pb, ps = pend; pend = None
+                if parts["bright_song"] >= p.get("bright_min", -99.0) and parts["loud_song"] >= p.get("confirm_loud", 0.0):
+                    state = "chorus"; ch_start = pb; s_start = ps; ch_end = pb + p.get("chorus_max", 16) * bar_s; out.append(b if p.get("confirm_late", True) else pb); ch_bar = int(pb / bar_s)
+                    continue
+            else:
+                continue
         last = next((r for r in reversed(resp) if r[0] <= b), None)
         next_chorus = bool(last and last[2] == "chorus")
         if in_win:
@@ -122,6 +133,8 @@ def det_hybrid(feat: dict, p: dict, lg: dict) -> list[float]:
             else:
                 thr += p.get("rest_extra", 3.0)
         if s >= thr and (not out or b - out[-1] >= p.get("min_gap_bars", 4) * bar_s):
+            if p.get("confirm_bars", 0):
+                pend = (b, s); continue
             state = "chorus"; ch_start = b; s_start = s; ch_end = b + p.get("chorus_max", 16) * bar_s; out.append(b); ch_bar = bar_i
     return out
 
@@ -130,8 +143,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--music", required=True); ap.add_argument("--logs", required=True, help="ログの glob（; 区切り）")
     ap.add_argument("--det", default="hybrid", choices=["hybrid", "baseline", "cue"]); ap.add_argument("--params", default="{}"); ap.add_argument("--dump", action="store_true")
+    ap.add_argument("--windows", default="both", choices=["both", "boundary", "chorus"], help="再生に使う窓（light_chorus の src）")
     ap.add_argument("--prior", default=None, help="曲構成の型の JSON（kiku_hikari/prior.py・本番の --structure-prior と同じファイル）")
     a = ap.parse_args(); p = json.loads(a.params)
+    global WIN_SRC
+    WIN_SRC = {"both": {"", "chorus"}, "boundary": {""}, "chorus": {"chorus"}}[a.windows]
     if a.prior:
         p["_prior"] = load_prior(a.prior)
     dirs = a.music.split(";")

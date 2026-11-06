@@ -105,6 +105,7 @@ def main(argv=None):
     ap.add_argument("--chorus-rule", choices=["rise", "cue"], default="rise", help="③改のサビ入りの条件: rise=第 2 段の判定版（音量 1.5 dB・タグ blind2-kai）／cue=11/6 の改良（kiku_hikari/cue.py の点数を拍ごとに・Claude の 8 小節格子の上で）")
     ap.add_argument("--cue-params", default="{}", help="--chorus-rule cue の閾値などの上書き（JSON・tools/chorus_replay.py と同じ名前）")
     ap.add_argument("--structure-prior", default=None, help="曲構成の型（数字だけの JSON・kiku_hikari/prior.py）。cue の閾値と Claude の構成規則の 1 行に使う。未指定なら従来どおり")
+    ap.add_argument("--chorus-hints", default=None, help="サビの頭の手がかりの文（テキスト・system に貼る）。指定すると Claude に「次のサビの頭まで何小節か」（bars_to_chorus）も答えさせ、その小節頭にもサビ判定の窓を置く。未指定なら従来どおり")
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--no-audio", action="store_true")
     ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす（マイクで聴く）")
@@ -147,6 +148,7 @@ def main(argv=None):
     log.event("rig", stinger=[f.address for f in fxs], par=[p.address for p in pars], spot=[s.address for s in spots])
     t_open = -99.0; was_open = False
     claude_b = None; chorus_until = -1.0; claude_k = None; lc_start = False   # Claude が小節数で答えた境界（救済は含めない）と、サビ扱いの終わり
+    chorus_b = None; lc_chorus = False                                        # --chorus-hints: Claude が答えた「次のサビの頭」の時刻と、その窓が始まった瞬間
     fx = fxs[0]
     dmx = bytearray(512)
     viz = None
@@ -166,10 +168,12 @@ def main(argv=None):
     worker = summarizer = None
     if a.mode == "claude":
         from .claude_worker import ClaudeWorker, FeatureSummarizer
-        worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log, variant=a.summary, knowledge=a.knowledge, color=a.color, extra_rules=prior_text(prior))
+        hints = open(a.chorus_hints, encoding="utf-8").read() if a.chorus_hints else ""
+        worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log, variant=a.summary, knowledge=a.knowledge, color=a.color, extra_rules=prior_text(prior), chorus_hints=hints)
         summarizer = FeatureSummarizer(variant=a.summary)
         log.event("claude_config", model=worker.model, effort=a.effort, every=a.every, summary=a.summary, adopt=a.adopt,
-                  knowledge=os.path.basename(a.knowledge) if a.knowledge else "lighting_knowledge_v2.json", color=a.color)
+                  knowledge=os.path.basename(a.knowledge) if a.knowledge else "lighting_knowledge_v2.json", color=a.color,
+                  chorus_hints=os.path.basename(a.chorus_hints) if a.chorus_hints else "")
     next_claude = 0.0; seen_gen = -1; f_due = False
     detector = ChangeDetector() if a.mode in ("claude", "beat", "rules") and not a.no_audio else None
 
@@ -247,6 +251,12 @@ def main(argv=None):
                     if engine.last_late is not None:          # Claude の境界を採った時だけ（救済の境界は使わない）
                         claude_b = engine.boundary_at
                         claude_k = getattr(worker.latest, "bars_to_boundary", None)   # ③改: 「次の小節頭」と答えた境界か
+                    kc = getattr(worker.latest, "bars_to_chorus", 0) or 0            # --chorus-hints: 「次のサビの頭」の小節頭（境界と同じ拍の算数・engine.on_foresight）
+                    if kc >= 1 and worker.latest_bar is not None:
+                        target = (worker.latest_bar + kc - 1) * engine.bpb + 1
+                        cb = now + (target - engine.beat_count - engine.phase) * engine.period_s
+                        chorus_b = cb if cb >= now - engine.period_s * engine.bpb else None   # 1 小節より前に過ぎていたら捨てる
+                        log.event("claude_chorus", gen=seen_gen, bars=kc, at=round(cb - t_start, 2), taken=chorus_b is not None)
                     summarizer.history.append({"t": round(tnow, 1), "section": worker.latest.section_now.value})
                     log.event("foresight_applied", gen=seen_gen, boundary_in=round(engine.boundary_at - now, 1) if engine.boundary_at else None, late=engine.last_late)
             if a.mode == "direct":
@@ -294,6 +304,9 @@ def main(argv=None):
                         sec = "chorus"
                     elif claude_b is not None and claude_b - now <= 2 * bar_s:
                         sec = "pre_chorus"
+                    if chorus_b is not None and now >= chorus_b:        # --chorus-hints: Claude が答えた「サビの頭」の小節頭にも窓を置く（sec は変えない・判定は look に任せる）
+                        chorus_b = None; lc_start = True; lc_chorus = True
+                        log.event("light_chorus", at=round(now - t_start, 2), until=round(now + a.chorus_bars * bar_s - t_start, 2), src="chorus")
                 if extra.get("opened") and not was_open:   # 開いた瞬間（立ち上がり）だけ
                     t_open = now
                 was_open = bool(extra.get("opened"))
@@ -303,8 +316,8 @@ def main(argv=None):
                 if look is not None and fsx is not None:   # ③改（--profile new）: 明暗・溜め・キメ・手のフェード・回ごとの色（kiku_hikari/look.py）
                     bar_s = period_s * engine.bpb
                     sec = look.section(sec, feat["rms_db"], dt, now=now, bar_s=bar_s, window_start=lc_start, near=(claude_k == 1 and lc_start), bar_now=bar,
-                                       feat={**feat, "onset": st.get("onset", 0.0)}, beat=beat, next_chorus=(fsx.section_next.value == "chorus"))
-                    lc_start = False
+                                       feat={**feat, "onset": st.get("onset", 0.0)}, beat=beat, next_chorus=(fsx.section_next.value == "chorus") or lc_chorus)
+                    lc_start = False; lc_chorus = False
                     for why, at in look.events:
                         log.event("look_chorus", why=why, at=round(at - t_start, 2))
                     look.events.clear()
