@@ -36,7 +36,12 @@ class Look:
                    # 曲のそれまでより ga_bright dB 明るい拍を「境目」とし（前の境目から ga_gap 小節以上）、Claude の 8 小節格子の窓を直近の境目を通る位相にずらす（shift_window）。0=しない（既定）
                    "grid_anchor": 0, "ga_hf": 3.0, "ga_lv": 1.5, "ga_bright": 1.0, "ga_gap": 4,
                    # song_med=1: 「曲のそれまでより明るい・大きい」の基準を曲全体の中央値にする（評価の tools/ と同じ。0＝既定＝直近 14 秒の中央値・タグ chorus-v2 の挙動）。--grid-anchor で 1
-                   "song_med": 0, **(cue_params or {})}
+                   "song_med": 0,
+                   # jev_veto=1（--jev-veto・11/7 本人決定 b）: cue が入ろうとした拍で判断 API（kiku_hikari/judge.py）に「サビの 1 小節目か」の確率を聞き、veto_thr 未満なら入らない。
+                   # 答えが veto_timeout 秒以内に来なければ入る（fail-open）。鍵が無ければ聞かない＝今どおり
+                   "jev_veto": 0, "veto_thr": 0.15, "veto_timeout": 1.0, **(cue_params or {})}
+        self.judge = None                  # kiku_hikari.judge.Judge（main.py が --jev-veto の時に入れる）
+        self.pend_veto = None              # 判断待ちのサビ入り (b, s, bar_now, asked_at)
         self.anchor = None                 # cue: 直近の境目（拍の時刻・grid_anchor）
         self.song_hi = []; self.song_rms = []; self.t_first = None   # cue: 曲のそれまでの高域と音量（0.25 秒ごと・3 秒以降）。中央値を cue_score に渡す（評価の tools/ と同じ基準・11/7）
         self.hist = deque(maxlen=40 * 14)  # cue: 直近 14 秒の (t, rms_db, b_high, flat, onset)
@@ -148,11 +153,14 @@ class Look:
             s, parts = cue_score(arr[:, 0], arr[:, 1], arr[:, 2], arr[:, 3], arr[:, 4], b, bar_s, p, song_med=song_med)
             if s is None:
                 continue
-            if p["grid_anchor"] and parts["hf_step"] >= p["ga_hf"] and parts["lv_step"] >= p["ga_lv"] and parts["bright_song"] >= p["ga_bright"] \
+            if (p["grid_anchor"] or p["jev_veto"]) and parts["hf_step"] >= p["ga_hf"] and parts["lv_step"] >= p["ga_lv"] and parts["bright_song"] >= p["ga_bright"] \
                     and (self.anchor is None or b - self.anchor >= p["ga_gap"] * bar_s):
                 self.anchor = b
-                self.events.append(("anchor", b))
+                if p["grid_anchor"]:
+                    self.events.append(("anchor", b))
             in_win = -bar_s / 4 <= b - self.win_from < p["win_bars"] * bar_s
+            if self.pend_veto is not None:      # 判断待ちの間は次の候補を見ない（答えか時間切れで決める・_resolve_veto）
+                continue
             if in_win:
                 thr = p["thr_win"] - (1.0 if self.win_next_chorus else 0.0)
                 if parts["bright_song"] < p["bright_min"]:
@@ -185,9 +193,17 @@ class Look:
                 else:
                     thr += p["rest_extra"]
             if s >= thr and b - self.last_det >= p["min_gap_bars"] * bar_s:
-                self.state = "chorus"; self.ch_start = b; self.s_start = s; self.ch_end = b + self.chorus_max * bar_s; self.last_det = b
-                self.t_chorus = b; self.n_cue += 1; self.ch_bar = bar_now
-                self.events.append(("cue", b))
+                if p["jev_veto"] and self.judge is not None and self.judge.available:
+                    from .judge import cue_state
+                    sb = None if self.anchor is None or b - self.anchor < 0.5 * bar_s else int(round((b - self.anchor) / bar_s))
+                    on_grid = sb is not None and min((b - self.anchor) % (8 * bar_s), 8 * bar_s - (b - self.anchor) % (8 * bar_s)) <= bar_s / 4
+                    if self.judge.ask(b, cue_state(parts, bar_now, sb, on_grid, in_win)):
+                        self.pend_veto = (b, s, bar_now, now)
+                        self.events.append(("ask", b))
+                        continue
+                self._enter_cue(b, s, bar_now, bar_s)
+        if self.pend_veto is not None:
+            self._resolve_veto(now, bar_s)
         if self.state == "chorus":
             return "chorus"
         if len(self.e_hist) >= 20:
@@ -197,6 +213,28 @@ class Look:
         if sec == "pre_chorus" and self.state == "free":
             return "pre_chorus"
         return "verse"
+
+    def _enter_cue(self, b: float, s: float, bar_now: int, bar_s: float, why: str = "cue"):
+        self.state = "chorus"; self.ch_start = b; self.s_start = s; self.ch_end = b + self.chorus_max * bar_s; self.last_det = b
+        self.t_chorus = b; self.n_cue += 1; self.ch_bar = bar_now
+        self.events.append((why, b))
+
+    def _resolve_veto(self, now: float, bar_s: float):
+        """判断待ちのサビ入りを、答え（noul）か時間切れで決める。noul >= veto_thr か時間切れ（fail-open）なら入る・未満なら入らない"""
+        p = self.cp; b, s, bar_now, asked = self.pend_veto
+        ans = [(v, dt) for bb, v, dt in self.judge.poll() if abs(bb - b) < 1e-6]
+        if ans:
+            v, dt = ans[-1]
+            self.events.append(("judge", b, round(v, 3), round(dt, 3)))
+            self.pend_veto = None
+            if v >= p["veto_thr"]:
+                self._enter_cue(b, s, bar_now, bar_s)
+            else:
+                self.events.append(("veto", b))      # 入らない（次の拍から改めて見る・min_gap は数え直さない）
+        elif now - asked >= p["veto_timeout"]:
+            self.events.append(("judge_timeout", b))
+            self.pend_veto = None
+            self._enter_cue(b, s, bar_now, bar_s)
 
     def shift_window(self, w: float, now: float, bar_s: float) -> float:
         """格子の引き直し（grid_anchor）: Claude の境界の時刻 w を、直近の境目 anchor を通る 8 小節の格子の位相にずらす（ずれは [-4, 4) 小節）。

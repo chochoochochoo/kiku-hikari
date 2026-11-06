@@ -106,6 +106,7 @@ def main(argv=None):
     ap.add_argument("--cue-params", default="{}", help="--chorus-rule cue の閾値などの上書き（JSON・tools/chorus_replay.py と同じ名前）")
     ap.add_argument("--structure-prior", default=None, help="曲構成の型（数字だけの JSON・kiku_hikari/prior.py）。cue の閾値と Claude の構成規則の 1 行に使う。未指定なら従来どおり")
     ap.add_argument("--grid-anchor", action="store_true", help="--chorus-rule cue の格子の引き直し（11/7・chorus-v3 候補）: 音の境目（小節頭で高域と音量が同時に段差・look.py の ga_*）を起点に、Claude の 8 小節格子の窓の位相をずらす。未指定なら従来どおり（cue_params の grid_anchor=1 と同じ）")
+    ap.add_argument("--jev-veto", action="store_true", help="--chorus-rule cue の拒否役（11/7 本人決定 b・chorus-v3 候補）: cue が入ろうとした拍で判断 API（TypeSafe Jev・kiku_hikari/judge.py）に「サビの 1 小節目か」の確率を聞き、低ければ入らない。鍵（TYPESAFE_API_KEY か .env）が無い・落ちた・1 秒以内に返らない時は今どおり入る（fail-open）")
     ap.add_argument("--candidates", action="store_true", help="② 候補選択式（11/7・chorus-v3 候補）: 要約に「これから来る小節頭 8 つの構造の手がかり表」（境目からの小節数・8 小節格子・前のサビからの小節数・音量の向き）を付け、Claude に次のサビの頭を 1 つ選ばせて（bars_to_chorus）その小節頭に窓を置く。未指定なら従来どおり")
     ap.add_argument("--chorus-hints", default=None, help="サビの頭の手がかりの文（テキスト・system に貼る）。指定すると Claude に「次のサビの頭まで何小節か」（bars_to_chorus）も答えさせ、その小節頭にもサビ判定の窓を置く。未指定なら従来どおり")
     ap.add_argument("--seconds", type=float, default=30.0)
@@ -165,7 +166,11 @@ def main(argv=None):
     if a.mode == "claude" and a.profile in ("new", "show"):
         from .look import Look
         look = Look(chorus_max=a.chorus_max, first_bars=a.no_chorus_first_bars, show=(a.profile == "show"), rule=a.chorus_rule,
-                    cue_params={**({"grid_anchor": 1, "song_med": 1} if a.grid_anchor else {}), **json.loads(a.cue_params)}, prior=prior)
+                    cue_params={**({"grid_anchor": 1, "song_med": 1} if a.grid_anchor else {}), **({"jev_veto": 1} if a.jev_veto else {}), **json.loads(a.cue_params)}, prior=prior)
+        if a.jev_veto:
+            from .judge import Judge
+            look.judge = Judge(log=log)
+            log.event("judge_config", available=look.judge.available, veto_thr=look.cp["veto_thr"], veto_timeout=look.cp["veto_timeout"])
     log.event("profile", profile=a.profile if a.mode == "claude" else "-", chorus_max=a.chorus_max, no_chorus_first_bars=a.no_chorus_first_bars,
               chorus_rule=a.chorus_rule if look is not None else "-", cue_params=look.cp if (look is not None and a.chorus_rule == "cue") else {},
               structure_prior=os.path.basename(a.structure_prior) if prior else "")
@@ -177,7 +182,7 @@ def main(argv=None):
         summarizer = FeatureSummarizer(variant=a.summary)
         log.event("claude_config", model=worker.model, effort=a.effort, every=a.every, summary=a.summary, adopt=a.adopt,
                   knowledge=os.path.basename(a.knowledge) if a.knowledge else "lighting_knowledge_v2.json", color=a.color,
-                  chorus_hints=os.path.basename(a.chorus_hints) if a.chorus_hints else "", candidates=a.candidates, grid_anchor=a.grid_anchor)
+                  chorus_hints=os.path.basename(a.chorus_hints) if a.chorus_hints else "", candidates=a.candidates, grid_anchor=a.grid_anchor, jev_veto=a.jev_veto)
     next_claude = 0.0; seen_gen = -1; f_due = False
     detector = ChangeDetector() if a.mode in ("claude", "beat", "rules") and not a.no_audio else None
 
@@ -332,8 +337,14 @@ def main(argv=None):
                     sec = look.section(sec, feat["rms_db"], dt, now=now, bar_s=bar_s, window_start=lc_start, near=(claude_k == 1 and lc_start), bar_now=bar,
                                        feat={**feat, "onset": st.get("onset", 0.0)}, beat=beat, next_chorus=(fsx.section_next.value == "chorus") or lc_chorus)
                     lc_start = False; lc_chorus = False
-                    for why, at in look.events:
-                        log.event("look_anchor" if why == "anchor" else "look_chorus", why=why, at=round(at - t_start, 2))   # anchor=--grid-anchor の境目（サビ入りではない）
+                    for ev in look.events:
+                        why, at = ev[0], ev[1]
+                        if why == "judge":                               # --jev-veto の答え（noul・往復秒）
+                            log.event("look_judge", at=round(at - t_start, 2), noul=ev[2], latency=ev[3])
+                        elif why in ("anchor", "ask", "veto", "judge_timeout"):   # サビ入りではない出来事（境目・判断の依頼・拒否・時間切れ）
+                            log.event("look_anchor" if why == "anchor" else "look_veto", why=why, at=round(at - t_start, 2))
+                        else:
+                            log.event("look_chorus", why=why, at=round(at - t_start, 2))
                     look.events.clear()
                     if look.push_onset(st.get("onset", 0.0), beat, level, now, bar_s, sec):
                         log.event("look_hit", at=round(now - t_start, 2))
