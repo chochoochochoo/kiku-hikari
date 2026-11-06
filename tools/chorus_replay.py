@@ -32,6 +32,15 @@ def song_of(path: str) -> str | None:
     for k, v in SONG_OF.items():
         if k in parts[-1] or (len(parts) > 1 and parts[-2] == k):
             return v
+    try:                                                                   # 疑似モードのログ: audio_start の WAV 名から（m01 など名前に曲が無いログ）
+        for l in open(path, encoding="utf-8"):
+            if '"kind":"audio_start"' in l:
+                dev = json.loads(l).get("device", "")
+                if dev.startswith("file:"):
+                    return os.path.splitext(os.path.basename(dev[5:]))[0]
+                break
+    except Exception:
+        pass
     try:                                                                   # 名前に曲が無いログ（撮影の実機テイク）: 曲のテンポで判別
         tempo = [json.loads(l)["tempo_bpm"] for l in open(path, encoding="utf-8") if '"kind":"summary"' in l]
         if tempo and abs(tempo[0] - 126.8) < 2: return "tabi_mastinchannel"
@@ -94,7 +103,7 @@ def det_hybrid(feat: dict, p: dict, lg: dict) -> list[float]:
         if prior is not None:
             thr += prior_adjust(prior, bar_i, ch_bar, len(out), p.get("prior_w", 1.0))
         if state == "chorus":
-            if b - ch_start >= p.get("sup_min_bars", 2) * bar_s and ((in_win and s >= max(thr + p.get("sup_win", 2.0), s_start - p.get("sup_slack", 2.0))) or s >= s_start + p.get("sup_margin", 3.0)):
+            if p.get("sup_min_bars", 2) * bar_s <= b - ch_start <= p.get("sup_max_bars", 99) * bar_s and ((in_win and s >= max(thr + p.get("sup_win", 2.0), s_start - p.get("sup_slack", 2.0))) or s >= s_start + p.get("sup_margin", 3.0)):
                 ch_start = b; s_start = s; ch_end = b + p.get("chorus_max", 16) * bar_s; out.append(b); low_run = 0; ch_bar = bar_i
                 continue
             if b >= ch_end:

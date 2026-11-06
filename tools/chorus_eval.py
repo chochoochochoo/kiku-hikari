@@ -195,8 +195,12 @@ def load_truth(song: str) -> tuple[list[float], list[float]]:
     """(サビの頭の秒, 耳の正解の境界点)。無ければ空"""
     ch = os.path.join(ROOT, "sections", "chorus", f"{song}.json")
     bd = os.path.join(ROOT, "sections", f"{song}.json")
-    cs = json.load(open(ch, encoding="utf-8"))["chorus_starts"] if os.path.isfile(ch) else []
-    bs = [b["t"] for b in json.load(open(bd, encoding="utf-8"))["boundaries"]] if os.path.isfile(bd) else []
+    bl = json.load(open(bd, encoding="utf-8"))["boundaries"] if os.path.isfile(bd) else []
+    bs = [b["t"] for b in bl]
+    human = [b["t"] for b in bl if b.get("section") == "chorus"]              # 耳の正解（cue.html の「サビ chorus」）が最優先
+    if human:
+        return sorted(human), bs
+    cs = json.load(open(ch, encoding="utf-8"))["chorus_starts"] if os.path.isfile(ch) else []   # 無ければ sections/chorus/（作者メモ・Gemini の仮正解）
     return cs, bs
 
 

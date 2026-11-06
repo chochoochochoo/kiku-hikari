@@ -147,7 +147,7 @@ class Look:
                 from .prior import prior_adjust
                 thr += prior_adjust(self.prior, bar_now, self.ch_bar, self.n_cue, p.get("prior_w", 1.0))
             if self.state == "chorus":
-                if b - self.ch_start >= p["sup_min_bars"] * bar_s and ((in_win and s >= max(thr + p["sup_win"], self.s_start - p["sup_slack"])) or s >= self.s_start + p["sup_margin"]):
+                if p["sup_min_bars"] * bar_s <= b - self.ch_start <= p.get("sup_max_bars", 99) * bar_s and ((in_win and s >= max(thr + p["sup_win"], self.s_start - p["sup_slack"])) or s >= self.s_start + p["sup_margin"]):
                     self.ch_start = b; self.s_start = s; self.ch_end = b + self.chorus_max * bar_s; self.low_run = 0; self.last_det = b
                     self.ch_bar = bar_now
                     self.events.append(("cue_again", b))
