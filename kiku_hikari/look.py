@@ -280,14 +280,14 @@ class Look:
         sp = list(spots)
         if sec in QUIET:                                  # 1. 暗く少数・ムービングは止めて白で人を抜く
             lo = (n - 2) // 2
-            cap = 0.2 if self.show else 0.35
+            cap = 0.12 if self.show else 0.35             # 全灯版は 11/7 本人決定で 0.2 → 0.12（verse を沈めてサビとの対比を最大に・値だけ・配置とアドレスは不変）
             out = [(rgb, min(k, cap) if lo <= i < lo + 2 else 0.0) for i, (rgb, k) in enumerate(out)]
             p["pan"], p["tilt"] = 0.5, 0.55
             p["color"] = "white"
-            p["dimmer"] = min(p["dimmer"], 0.3 if self.show else 0.5)
-            if self.show:                                 # 全灯版: 上段スポットも中央 2 台だけ・30% 以下
+            p["dimmer"] = min(p["dimmer"], 0.2 if self.show else 0.5)
+            if self.show:                                 # 全灯版: 上段スポットも中央 2 台だけ・20% 以下（11/7: 30% → 20%）
                 slo = (ns - 2) // 2
-                sp = [min(v, 0.3) if slo <= i < slo + 2 else 0.0 for i, v in enumerate(sp)]
+                sp = [min(v, 0.2) if slo <= i < slo + 2 else 0.0 for i, v in enumerate(sp)]
         elif sec == "pre_chorus":                         # 2. 積み上げ（中央から外へ）・最後の 1 拍は暗転
             frac = 0.0 if to_boundary is None else max(0.0, min(1.0, 1 - to_boundary / (2 * bar_s)))
             lit = 2 + 2 * min(3, int(frac * 4))           # 2→4→6→8
@@ -310,15 +310,19 @@ class Look:
                 cols = [nxt, PAR_PAIR.get(nxt, "white")]
             else:
                 cols = ["white", color, nxt]
+            if self.show:                                 # 全灯版（11/7 本人決定「開いた時の明るさと色そのものを強く」）: Par は白を主体（2/3 が白・残りがサビの色）・全台 100%
+                cols = ["white", "white", color if color != "white" else nxt]
             out = [(PAR_RGB.get(cols[(i + bar) % len(cols)], PAR_RGB["white"]), 1.0) for i in range(n)]
             p["dimmer"] = 0.75 + 0.25 * max(0.0, min(1.0, pulse))   # サビ中も拍の明滅を残す（75〜100%）
             sp = [p["dimmer"]] * ns
-            if self.show:                                 # 全灯版: 上段スポット 6 台は 100% 固定・ムービングは 90〜100%
+            if self.show:                                 # 全灯版: 上段スポット 6 台 100% 固定・ムービングは 100% 固定で明るい色（暗い色 red/blue は yellow に）
                 sp = [1.0] * ns
-                p["dimmer"] = 0.9 + 0.1 * max(0.0, min(1.0, pulse))
-            self.sweep += dt / max(0.4, bar_s) * 2 * math.pi
-            p["pan"] = 0.5 + 0.45 * math.sin(self.sweep)
-            p["tilt"] = 0.55 + 0.2 * math.sin(2 * self.sweep)
+                p["dimmer"] = 1.0
+                p["color"] = color if color in ("white", "yellow", "orange", "green", "light_blue", "pink") else "yellow"
+            self.sweep += dt / max(0.4, bar_s) * 2 * math.pi * (1.5 if self.show else 1.0)   # 全灯版は 1.5 倍速く
+            amp_p, amp_t = (0.5, 0.3) if self.show else (0.45, 0.2)                            # 全灯版は振り幅を最大に
+            p["pan"] = 0.5 + amp_p * math.sin(self.sweep)
+            p["tilt"] = 0.55 + amp_t * math.sin(2 * self.sweep)
         if now < self.hit_until:                          # 3. キメ: 1 拍だけ全台白で全灯
             out = [(PAR_RGB["white"], 1.0)] * n
             sp = [1.0] * ns
