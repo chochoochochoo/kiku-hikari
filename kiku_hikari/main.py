@@ -102,7 +102,7 @@ def main(argv=None):
     ap.add_argument("--profile", choices=["new", "old", "show"], default="new", help="claude モード: 見せ方（既定 new=第 2 段の改良・kiku_hikari/look.py／old=改良前の ③・タグ blind2-old と同じ挙動／show=全灯版・動画の見せ場用。サビの判定は new と同じで、サビで上段スポット 6 台とムービングを 100% に・verse はさらに暗く少数）")
     ap.add_argument("--chorus-max", type=int, default=16, help="③改: サビの上限（小節・既定 16）。その後の最低 8 小節は暗い verse")
     ap.add_argument("--no-chorus-first-bars", type=int, default=0, help="③改: 曲の冒頭この小節数はサビに入らない（既定 0=オフ）")
-    ap.add_argument("--chorus-rule", choices=["rise", "cue"], default="rise", help="③改のサビ入りの条件: rise=第 2 段の判定版（音量 1.5 dB・タグ blind2-kai）／cue=11/6 の改良（kiku_hikari/cue.py の点数を拍ごとに・Claude の 8 小節格子の上で）")
+    ap.add_argument("--chorus-rule", choices=["rise", "cue"], default="cue", help="③改のサビ入りの条件: cue=既定（11/6 本人決定・タグ chorus-v2。kiku_hikari/cue.py の点数を拍ごとに・Claude の 8 小節格子の上で・学習の統計を門に）／rise=第 2 段の判定版（音量 1.5 dB・タグ blind2-kai）")
     ap.add_argument("--cue-params", default="{}", help="--chorus-rule cue の閾値などの上書き（JSON・tools/chorus_replay.py と同じ名前）")
     ap.add_argument("--structure-prior", default=None, help="曲構成の型（数字だけの JSON・kiku_hikari/prior.py）。cue の閾値と Claude の構成規則の 1 行に使う。未指定なら従来どおり")
     ap.add_argument("--chorus-hints", default=None, help="サビの頭の手がかりの文（テキスト・system に貼る）。指定すると Claude に「次のサビの頭まで何小節か」（bars_to_chorus）も答えさせ、その小節頭にもサビ判定の窓を置く。未指定なら従来どおり")
