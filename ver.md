@@ -422,3 +422,8 @@
 ### V202611.084 – 20261107-01:27:46
 **指示:** （本人決定 11/7 01:4x・入口経由）「的中が下がらず空振りが減る」を本番で満たしたので既定を変える: main.py の既定 jev_veto=1（鍵の無い環境は今のまま＝fail-open）・タグ chorus-v3・README/docs の既定の記述（rise・cue は引数で戻せること、負けをそのまま）
 **変更:** `main.py --jev-veto` を BooleanOptionalAction・既定 True（`--no-jev-veto` で切る）・help と `--chorus-rule` の help を更新、`look.py` のコメント、README（残り項目の段落に既定変更の根拠と負け・目次の行）、docs/eval-chorus.md に本人決定の行。鍵無しの疑似走行で judge_config available=false・profile jev_veto=1（聞かずに今どおり動く）を確認。タグ chorus-v3
+
+---
+### V202611.085 – 20261107-02:22:46
+**指示:** （本人・11/7 02:0x）.env.example に判断 API の鍵の行 `TYPESAFE_API_KEY=`（値なし）を追加してコミット（1f46344・本人が実施。開発新と入口は .env 系を権限で開けないため代行せず）。開発新は記帳と push のみ
+**変更:** `.env.example` に 2 行追加（本人のコミット 1f46344・secret_scan OK）。README 153 行の記述（鍵は .env の TYPESAFE_API_KEY= か環境変数・無ければ使わない）はそのまま。この ver.md の記帳を同番号で追記
