@@ -68,14 +68,48 @@ def parse_log(path: str) -> dict:
     return {"resp": resp, "windows": sorted(windows), "opens": opens, "look": look, "bar_s": bar_s}
 
 
+def anchors_of(feat: dict, p: dict) -> list[float]:
+    """格子の引き直し（--grid-anchor・look.py の grid_anchor と同じ条件）: 高域 ga_hf dB と音量 ga_lv dB が同時に段差で上がり曲のそれまでより ga_bright dB 明るい拍（前の境目から ga_gap 小節以上）"""
+    t = feat["t"]; bt = [float(x) for x in t[feat["beat"] > 0]]
+    beat_s = float(np.median(np.diff(bt))); bar_s = beat_s * 4; out = []
+    for i in range(16, len(bt) - 1):
+        b = bt[i]; s, parts = ce.cue_score(feat, b, bar_s, p.get("lat", 0.3), p)
+        if s is None:
+            continue
+        if parts["hf_step"] >= p.get("ga_hf", 3.0) and parts["lv_step"] >= p.get("ga_lv", 1.5) and parts["bright_song"] >= p.get("ga_bright", 1.0) and (not out or b - out[-1] >= p.get("ga_gap", 4) * bar_s):
+            out.append(b)
+    return out
+
+
+def shift_windows(windows: list[float], anchors: list[float], bar_s: float, resp: list) -> list[float]:
+    """Claude の窓 w を、w より前（半小節以上）に分かっていた直近の境目を通る 8 小節格子の位相へずらす（[-4,4) 小節）。
+    ずらした先がその窓を生んだ答えの届いた時刻より前なら、届いた時刻に置く（本番の look.shift_window の max(now, ...) と同じ）"""
+    out = []
+    for w in windows:
+        past = [a for a in anchors if a <= w - 0.5 * bar_s]
+        if not past:
+            out.append(w); continue
+        d = (w - past[-1]) % (8 * bar_s)
+        d = d if d < 4 * bar_s else d - 8 * bar_s
+        w2 = w - d
+        arr = [r[0] for r in resp if r[0] <= w]
+        if arr and w2 < arr[-1]:
+            w2 = arr[-1]
+        out.append(w2)
+    return sorted(set(round(x, 2) for x in out))
+
+
 def det_hybrid(feat: dict, p: dict, lg: dict) -> list[float]:
     """案 C: 音響の点数（chorus_eval.det_cue と同じ式）＋ Claude の窓。
        - Claude の境界に達してから win_bars 小節の間（手前 1 拍も含む）は閾値 thr_win（既定 3）。直前の答えが section_next=chorus なら更に −1
        - 窓の外は thr_alone（既定 9・曲の頭 early_bars 小節は +early_pen）
-       - サビ中の乗り換えは、窓の中で thr_win+2 以上か、始めた時の点数 +sup_margin 以上（2 小節以上あと）"""
+       - サビ中の乗り換えは、窓の中で thr_win+2 以上か、始めた時の点数 +sup_margin 以上（2 小節以上あと）
+       - grid_anchor=1 なら窓を音の境目の位相へずらす（shift_windows・本番の --grid-anchor）"""
     t = feat["t"]; lat = p.get("lat", 0.3)
     bt = [float(x) for x in t[feat["beat"] > 0]]; bpb = 4
     resp = lg["resp"]; windows = lg["windows"]
+    if p.get("grid_anchor"):
+        windows = shift_windows(windows, anchors_of(feat, p), float(np.median(np.diff(bt))) * bpb, resp)
     out = []; state = "free"; ch_end = rest_until = -1.0; ch_start = -1.0; s_start = 0.0; low_run = 0
     prior = p.get("_prior"); ch_bar = None   # 曲構成の型（--prior・kiku_hikari/prior.py）。本番の look.py と同じ増減
     pend = None                              # confirm_bars>0 のとき: (候補の拍, 点数) を持って確認待ち

@@ -18,9 +18,11 @@ DEFAULTS = {"lat": 0.3, "w_hf": 1.0, "w_lv": 0.6, "w_fl": 1.0, "w_fill": 1.0, "w
 
 
 def cue_score(t: np.ndarray, rms: np.ndarray, hi: np.ndarray, flat: np.ndarray, onset: np.ndarray,
-              b: float, bar_s: float, p: dict | None = None):
+              b: float, bar_s: float, p: dict | None = None, song_med: tuple | None = None):
     """t（秒・昇順）と同じ長さの特徴量の列から、拍の時刻 b の点数と内訳を返す。材料が足りなければ (None, None)。
-    参照: 直前 2 小節（b−2 小節 〜 b−0.1 秒）。窓: b 〜 b+lat。曲全体: t>3 秒から b まで。"""
+    参照: 直前 2 小節（b−2 小節 〜 b−0.1 秒）。窓: b 〜 b+lat。曲全体: t>3 秒から b まで。
+    song_med=(高域の中央値, 音量の中央値): 曲のそれまでの中央値を呼び手が持っている時はこれを使う（本番 look.py は直近 14 秒しか列を持たないため。
+    11/7 までは本番が「直近 14 秒の中央値」になっていて、評価（曲全体の中央値）と食い違っていた）"""
     p = {**DEFAULTS, **(p or {})}
     lat = p["lat"]
     w = (t >= b) & (t < b + lat)
@@ -33,9 +35,12 @@ def cue_score(t: np.ndarray, rms: np.ndarray, hi: np.ndarray, flat: np.ndarray, 
     m1 = (t >= b - bar_s) & (t < b); m3 = (t >= b - 4 * bar_s) & (t < b - bar_s)
     fill = float(onset[m1].mean() / max(1e-6, onset[m3].mean())) if m1.any() and m3.any() else 1.0
     drop_prev = float(np.median(rms[m1]) - np.median(rms[m3])) if m1.any() and m3.any() else 0.0
-    song = (t > 3.0) & (t < b)
-    bright_song = float(hi[w].mean() - np.median(hi[song])) if song.any() else 0.0
-    loud_song = float(rms[w].mean() - np.median(rms[song])) if song.any() else 0.0
+    if song_med is not None:
+        bright_song = float(hi[w].mean() - song_med[0]); loud_song = float(rms[w].mean() - song_med[1])
+    else:
+        song = (t > 3.0) & (t < b)
+        bright_song = float(hi[w].mean() - np.median(hi[song])) if song.any() else 0.0
+        loud_song = float(rms[w].mean() - np.median(rms[song])) if song.any() else 0.0
     s = (p["w_hf"] * max(0.0, hf_step) + p["w_lv"] * max(0.0, lv_step)
          + p["w_fl"] * max(0.0, math.log2(max(fl_ratio, 1e-3)))
          + p["w_fill"] * max(0.0, math.log2(max(fill, 1e-3)))

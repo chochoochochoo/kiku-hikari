@@ -195,6 +195,9 @@ def load_truth(song: str) -> tuple[list[float], list[float]]:
     """(サビの頭の秒, 耳の正解の境界点)。無ければ空"""
     ch = os.path.join(ROOT, "sections", "chorus", f"{song}.json")
     bd = os.path.join(ROOT, "sections", f"{song}.json")
+    alt = os.environ.get("KIKU_TRUTH_DIR")       # 別の正解の束で採点する時（例: 学習の仮正解 v2・sections/ と同じ形式のフォルダ・非公開）
+    if alt and os.path.isfile(os.path.join(alt, f"{song}.json")):
+        bd = os.path.join(alt, f"{song}.json")
     bl = json.load(open(bd, encoding="utf-8"))["boundaries"] if os.path.isfile(bd) else []
     bs = [b["t"] for b in bl]
     human = [b["t"] for b in bl if b.get("section") == "chorus"]              # 耳の正解（cue.html の「サビ chorus」）が最優先

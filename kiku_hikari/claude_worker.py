@@ -88,6 +88,15 @@ CHORUS_RULE_C = """
 サビの頭（bars_to_chorus）: 境界とは別に、次のサビの頭が bar_now から何小節先の小節頭かを bars_to_chorus に答える（分からない・いまサビの中なら 0）。次の手がかりに従う。確信が低くても、範囲に入る値を答えてよい（reason に「仮」と書く）。
 """
 
+# ② 候補選択式（11/7・--candidates）: 直答（CHORUS_RULE_C）ではなく、Python が数えた構造の手がかりの表から候補を選ばせる
+CAND_RULE = """
+
+サビの頭の候補（candidates）: 要約の candidates は、これから来る小節頭 8 つ（k=1〜8 小節先）について Python が数えた構造の手がかり
+（bar=曲頭からの小節番号・from_boundary=直前の区間の境目（音量と高域が同時に上がった小節頭）からの小節数・on_grid=その境目から 8 小節の格子に乗るか・from_last_chorus=前のサビの頭からの小節数・level_trend=直近 2 小節の音量の向き）。
+この表から「次のサビの 1 小節目」になる小節頭を 1 つ選び、その k を bars_to_chorus に答える。8 小節以内にサビの頭が来そうでなければ 0。
+選び方: 境目から 8 か 16 小節目（on_grid=true）の小節頭を優先する。bar が 20 より前の小節頭と、from_last_chorus が 22 未満の小節頭は選ばない。level_trend が rising（B メロの終わり）なら、その流れの先にある格子の小節頭を選ぶ。
+"""
+
 
 SYSTEM_FIXED = """あなたはライブの照明オペレーターの判断を肩代わりする。入力は直近 30 秒の音の特徴量の要約（1 秒ごと）と、これまでの区間の履歴。
 仕事は「構造の先読み」: 次の境界（サビ頭・ブレイク・間奏など）が何秒後に来るか、どんな区間か、どう開くかを予測し、いまの色・動き・溜め・感情を決める。
@@ -140,7 +149,7 @@ COLOR_RULES = {
 
 
 class ClaudeWorker:
-    def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None, variant: str = "a", knowledge: Optional[str] = None, color: str = "v1", extra_rules: str = "", chorus_hints: str = ""):
+    def __init__(self, model: str = MODEL_DEFAULT, effort: str = "low", log=None, variant: str = "a", knowledge: Optional[str] = None, color: str = "v1", extra_rules: str = "", chorus_hints: str = "", candidates: bool = False):
         import anthropic
         key = load_env_key()
         # timeout と再試行: 既定（600 秒×2 回）だと回線が詰まった時に最長 30 分 inflight のまま新しい予測が止まる。実測の遅延は中央値 2.5 秒・最大 6.4 秒（189 回）なので 10 秒で切り、再試行はしない（次の依頼は --every 秒後に出る）
@@ -148,10 +157,10 @@ class ClaudeWorker:
         self.model, self.effort, self.log = model, effort, log
         self.system = [
             {"type": "text", "text": SYSTEM_FIXED + (CONFIDENCE_RULE_D if variant in ("d", "e", "f") else "") + (BAR_RULE_E if variant in ("e", "f") else "") + COLOR_RULES[color] + (extra_rules or "")
-             + ((CHORUS_RULE_C + chorus_hints) if chorus_hints else "")},   # extra_rules: 曲構成の型の 1 行（--structure-prior・既定は空）。chorus_hints: サビの頭の手がかりの文（--chorus-hints・既定は空）
+             + ((CHORUS_RULE_C + chorus_hints) if chorus_hints else "") + (CAND_RULE if candidates else "")},   # extra_rules: 曲構成の型の 1 行（--structure-prior・既定は空）。chorus_hints: サビの頭の手がかりの文（--chorus-hints・既定は空）。candidates: ② 候補選択式（--candidates・既定は無し）
             {"type": "text", "text": load_knowledge(knowledge), "cache_control": {"type": "ephemeral"}},
         ]
-        self.out_model = (ForesightC if chorus_hints else ForesightE) if variant in ("e", "f") else Foresight
+        self.out_model = (ForesightC if (chorus_hints or candidates) else ForesightE) if variant in ("e", "f") else Foresight
         self.generation = 0
         self.latest_asked = None       # 最新の返答の元になった依頼を出した時刻（perf_counter）＝ seconds_to_boundary の基準
         self.latest_bar = None         # その依頼時点の bar_now（e/f）
@@ -236,6 +245,7 @@ class FeatureSummarizer:
         self.history: list[dict] = []  # Claude が宣言した区間の履歴 [{"t":秒,"section":...}]
         self.max_db = -80.0            # これまでの最大音量（相対レベルの基準）
         self.max_onset = 1e-6
+        self.cand = None               # ② 候補選択式（--candidates）: main.py が毎フレーム入れる {"anchor_bars": 境目から今までの小節数 or None, "chorus_bars": 前のサビの頭から or None}
 
     def push(self, t: float, feat: dict, onset: float):
         sec = int(t)
@@ -278,7 +288,22 @@ class FeatureSummarizer:
         for r in self.rows:
             bars.setdefault(r["bar"], []).append(r["level"])
         last8 = [{"bar": b, "level": round(sum(v) / len(v), 2)} for b, v in sorted(bars.items())][-8:]
+        extra = {}
+        if self.cand is not None:      # ② 候補選択式: これから来る小節頭 8 つの構造の手がかり（Python が数える・CAND_RULE）
+            bar_now = self.beats // 4 + 1
+            lvs = [r["level"] for r in last8]
+            trend = "flat"
+            if len(lvs) >= 4:
+                d = sum(lvs[-2:]) / 2 - sum(lvs[-4:-2]) / 2
+                trend = "rising" if d >= 0.04 else ("falling" if d <= -0.04 else "flat")
+            ab, cb = self.cand.get("anchor_bars"), self.cand.get("chorus_bars")
+            extra["candidates"] = [{"k": k, "bar": bar_now + k,
+                                    "from_boundary": (None if ab is None else int(round(ab + k))),
+                                    "on_grid": (ab is not None and int(round(ab + k)) % 8 == 0),
+                                    "from_last_chorus": (None if cb is None else int(round(cb + k))),
+                                    "level_trend": trend} for k in range(1, 9)]
         return {
+            **extra,
             "now_s": round(t, 1),
             "tempo_bpm": round(tempo_bpm, 1),
             "beat_now": self.beats, "bar_now": self.beats // 4 + 1,

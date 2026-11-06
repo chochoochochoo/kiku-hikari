@@ -31,7 +31,14 @@ class Look:
         # cue の既定（11/6 13:5x・学習の手がかり 15 行の 3・4・5 から）: 曲頭 16 小節は入らない・乗り換えは入りから 8 小節以内で格子の上だけ（sup_margin 99＝格子の外の乗り換え無し）・
         # サビの頭どうしは 22 小節以上あける・サビ 16 小節のあと 16 小節は入りにくく。11/6 午前の組（early 12・sup_margin 3・sup_max 99・gap 4・rest 8）は測定 5 曲×3 で 10/21・空振り 53、この組は 7/21・空振り 19
         self.cp = {"thr_win": 4.0, "thr_alone": 9.0, "grid_only": True, "bright_min": 1.0, "early_bars_all": 16, "win_bars": 1.0,
-                   "sup_min_bars": 4, "sup_max_bars": 8, "sup_win": 1.0, "sup_slack": 99.0, "sup_margin": 99.0, "rest_bars": 16, "rest_extra": 3.0, "drop_db": 5.0, "min_gap_bars": 22, **(cue_params or {})}
+                   "sup_min_bars": 4, "sup_max_bars": 8, "sup_win": 1.0, "sup_slack": 99.0, "sup_margin": 99.0, "rest_bars": 16, "rest_extra": 3.0, "drop_db": 5.0, "min_gap_bars": 22,
+                   # 格子の引き直し（11/7・--grid-anchor・学習の手がかり 1「小節を数える起点は直前に確かめた区間の境目」）: 小節頭で高域 ga_hf dB・音量 ga_lv dB が同時に段差で上がり
+                   # 曲のそれまでより ga_bright dB 明るい拍を「境目」とし（前の境目から ga_gap 小節以上）、Claude の 8 小節格子の窓を直近の境目を通る位相にずらす（shift_window）。0=しない（既定）
+                   "grid_anchor": 0, "ga_hf": 3.0, "ga_lv": 1.5, "ga_bright": 1.0, "ga_gap": 4,
+                   # song_med=1: 「曲のそれまでより明るい・大きい」の基準を曲全体の中央値にする（評価の tools/ と同じ。0＝既定＝直近 14 秒の中央値・タグ chorus-v2 の挙動）。--grid-anchor で 1
+                   "song_med": 0, **(cue_params or {})}
+        self.anchor = None                 # cue: 直近の境目（拍の時刻・grid_anchor）
+        self.song_hi = []; self.song_rms = []; self.t_first = None   # cue: 曲のそれまでの高域と音量（0.25 秒ごと・3 秒以降）。中央値を cue_score に渡す（評価の tools/ と同じ基準・11/7）
         self.hist = deque(maxlen=40 * 14)  # cue: 直近 14 秒の (t, rms_db, b_high, flat, onset)
         self.pend = deque()                # cue: まだ採点していない拍の時刻
         self.ch_start = -99.0; self.s_start = 0.0; self.low_run = 0; self.last_det = -99.0; self.win_from = -99.0; self.win_next_chorus = False
@@ -121,8 +128,12 @@ class Look:
         k_slow = 1 - math.exp(-dt / 1.5)
         self.e_db = feat["rms_db"] if self.e_db is None else self.e_db + (feat["rms_db"] - self.e_db) * k_slow
         self.n_e += 1
+        if self.t_first is None:
+            self.t_first = now
         if self.n_e % 10 == 0 and self.e_db > -70:
             self.e_hist.append(self.e_db)
+        if self.n_e % 10 == 0 and now - self.t_first > 3.0:
+            self.song_hi.append(feat.get("b_high", 0.0)); self.song_rms.append(feat["rms_db"])
         if window_start:
             self.win_from = now; self.win_next_chorus = next_chorus
         if beat:
@@ -133,9 +144,14 @@ class Look:
             if len(self.hist) < 40 * 3:
                 continue
             arr = np.array(self.hist, dtype=np.float64)
-            s, parts = cue_score(arr[:, 0], arr[:, 1], arr[:, 2], arr[:, 3], arr[:, 4], b, bar_s, p)
+            song_med = (float(np.median(self.song_hi)), float(np.median(self.song_rms))) if (p["song_med"] and len(self.song_hi) >= 8) else None
+            s, parts = cue_score(arr[:, 0], arr[:, 1], arr[:, 2], arr[:, 3], arr[:, 4], b, bar_s, p, song_med=song_med)
             if s is None:
                 continue
+            if p["grid_anchor"] and parts["hf_step"] >= p["ga_hf"] and parts["lv_step"] >= p["ga_lv"] and parts["bright_song"] >= p["ga_bright"] \
+                    and (self.anchor is None or b - self.anchor >= p["ga_gap"] * bar_s):
+                self.anchor = b
+                self.events.append(("anchor", b))
             in_win = -bar_s / 4 <= b - self.win_from < p["win_bars"] * bar_s
             if in_win:
                 thr = p["thr_win"] - (1.0 if self.win_next_chorus else 0.0)
@@ -181,6 +197,15 @@ class Look:
         if sec == "pre_chorus" and self.state == "free":
             return "pre_chorus"
         return "verse"
+
+    def shift_window(self, w: float, now: float, bar_s: float) -> float:
+        """格子の引き直し（grid_anchor）: Claude の境界の時刻 w を、直近の境目 anchor を通る 8 小節の格子の位相にずらす（ずれは [-4, 4) 小節）。
+        ずらした先が過去なら今（置ける最も早い所）。境目が無ければそのまま。tools/chorus_replay.py の shift_windows と同じ"""
+        if not self.cp["grid_anchor"] or self.anchor is None or bar_s <= 0:
+            return w
+        d = (w - self.anchor) % (8 * bar_s)
+        d = d if d < 4 * bar_s else d - 8 * bar_s
+        return max(now, w - d)
 
     # --- 3. キメ ---
     def push_onset(self, onset: float, beat: bool, level: float, now: float, bar_s: float, sec: str):
