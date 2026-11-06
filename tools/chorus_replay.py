@@ -18,6 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools")); sys.path.insert(0, ROOT)
 sys.stdout.reconfigure(encoding="utf-8")
 import chorus_eval as ce  # noqa: E402
+from kiku_hikari.prior import load_prior, prior_adjust  # noqa: E402
 
 SONG_OF = {"tabi": "tabi_mastinchannel", "song14": "14_dance_rock", "show-tabi": "tabi_mastinchannel", "show-14": "14_dance_rock", "new-14": "14_dance_rock",
            "viz": "tabi_mastinchannel", "pars": "tabi_mastinchannel"}
@@ -66,6 +67,7 @@ def det_hybrid(feat: dict, p: dict, lg: dict) -> list[float]:
     bt = [float(x) for x in t[feat["beat"] > 0]]; bpb = 4
     resp = lg["resp"]; windows = lg["windows"]
     out = []; state = "free"; ch_end = rest_until = -1.0; ch_start = -1.0; s_start = 0.0; low_run = 0
+    prior = p.get("_prior"); ch_bar = None   # 曲構成の型（--prior・kiku_hikari/prior.py）。本番の look.py と同じ増減
     for i in range(4 * bpb, len(bt) - 1):
         b = bt[i]; beat_s = bt[i] - bt[i - 1]
         if beat_s <= 0.2 or beat_s > 1.1:
@@ -88,9 +90,12 @@ def det_hybrid(feat: dict, p: dict, lg: dict) -> list[float]:
                 thr += p.get("early_pen", 3.0)
         if b < p.get("early_bars_all", 0) * bar_s:
             thr += 100
+        bar_i = int(b / bar_s)
+        if prior is not None:
+            thr += prior_adjust(prior, bar_i, ch_bar, len(out), p.get("prior_w", 1.0))
         if state == "chorus":
             if b - ch_start >= p.get("sup_min_bars", 2) * bar_s and ((in_win and s >= max(thr + p.get("sup_win", 2.0), s_start - p.get("sup_slack", 2.0))) or s >= s_start + p.get("sup_margin", 3.0)):
-                ch_start = b; s_start = s; ch_end = b + p.get("chorus_max", 16) * bar_s; out.append(b); low_run = 0
+                ch_start = b; s_start = s; ch_end = b + p.get("chorus_max", 16) * bar_s; out.append(b); low_run = 0; ch_bar = bar_i
                 continue
             if b >= ch_end:
                 state = "rest"; rest_until = b + p.get("rest_bars", 8) * bar_s; low_run = 0
@@ -108,7 +113,7 @@ def det_hybrid(feat: dict, p: dict, lg: dict) -> list[float]:
             else:
                 thr += p.get("rest_extra", 3.0)
         if s >= thr and (not out or b - out[-1] >= p.get("min_gap_bars", 4) * bar_s):
-            state = "chorus"; ch_start = b; s_start = s; ch_end = b + p.get("chorus_max", 16) * bar_s; out.append(b)
+            state = "chorus"; ch_start = b; s_start = s; ch_end = b + p.get("chorus_max", 16) * bar_s; out.append(b); ch_bar = bar_i
     return out
 
 
@@ -116,7 +121,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--music", required=True); ap.add_argument("--logs", required=True, help="ログの glob（; 区切り）")
     ap.add_argument("--det", default="hybrid", choices=["hybrid", "baseline", "cue"]); ap.add_argument("--params", default="{}"); ap.add_argument("--dump", action="store_true")
+    ap.add_argument("--prior", default=None, help="曲構成の型の JSON（kiku_hikari/prior.py・本番の --structure-prior と同じファイル）")
     a = ap.parse_args(); p = json.loads(a.params)
+    if a.prior:
+        p["_prior"] = load_prior(a.prior)
     dirs = a.music.split(";")
     logs = sorted(x for g in a.logs.split(";") for x in glob.glob(g))
     agg = {"F0": [], "F1": [], "hit": 0, "n": 0, "miss": 0, "fp": 0, "errs": []}

@@ -21,7 +21,9 @@ FADE_S = {"verse": 1.0, "intro": 1.2, "outro": 1.5, "bridge": 1.2, "pre_chorus":
 
 
 class Look:
-    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False, rule: str = "rise", cue_params: dict | None = None):
+    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False, rule: str = "rise", cue_params: dict | None = None, prior: dict | None = None):
+        self.prior = prior             # 曲構成の型（kiku_hikari/prior.py・--structure-prior）。None なら閾値に触らない
+        self.n_cue = 0; self.ch_bar = None   # cue: これまでのサビ入りの回数と、直近のサビ入りの小節番号（型の照合用）
         self.chorus_max = chorus_max   # サビの上限（小節）。11/4 夜に 8→16（一般的なサビの長さ・本人決定）
         self.first_bars = first_bars   # 曲の冒頭この小節数はサビに入らない（0=オフ・第 2 段で比較中）
         self.rule = rule               # サビ入りの条件: rise=第 2 段の判定版（音量の立ち上がり 1.5 dB・タグ blind2-kai）／cue=11/6 の改良（kiku_hikari/cue.py の点数・拍ごと・Claude の格子の上で判定）
@@ -141,9 +143,13 @@ class Look:
                 thr = p["thr_alone"] + (100 if p["grid_only"] else 0)
             if bar_now < max(self.first_bars, p["early_bars_all"]):
                 thr += 100
+            if self.prior is not None:                 # 曲構成の型: 型に合う小節頭は入りやすく、外れは離れた分だけ入りにくく（prior.py）
+                from .prior import prior_adjust
+                thr += prior_adjust(self.prior, bar_now, self.ch_bar, self.n_cue, p.get("prior_w", 1.0))
             if self.state == "chorus":
                 if b - self.ch_start >= p["sup_min_bars"] * bar_s and ((in_win and s >= max(thr + p["sup_win"], self.s_start - p["sup_slack"])) or s >= self.s_start + p["sup_margin"]):
                     self.ch_start = b; self.s_start = s; self.ch_end = b + self.chorus_max * bar_s; self.low_run = 0; self.last_det = b
+                    self.ch_bar = bar_now
                     self.events.append(("cue_again", b))
                     continue
                 if b >= self.ch_end:
@@ -162,7 +168,7 @@ class Look:
                     thr += p["rest_extra"]
             if s >= thr and b - self.last_det >= p["min_gap_bars"] * bar_s:
                 self.state = "chorus"; self.ch_start = b; self.s_start = s; self.ch_end = b + self.chorus_max * bar_s; self.last_det = b
-                self.t_chorus = b
+                self.t_chorus = b; self.n_cue += 1; self.ch_bar = bar_now
                 self.events.append(("cue", b))
         if self.state == "chorus":
             return "chorus"

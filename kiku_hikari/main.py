@@ -104,6 +104,7 @@ def main(argv=None):
     ap.add_argument("--no-chorus-first-bars", type=int, default=0, help="③改: 曲の冒頭この小節数はサビに入らない（既定 0=オフ）")
     ap.add_argument("--chorus-rule", choices=["rise", "cue"], default="rise", help="③改のサビ入りの条件: rise=第 2 段の判定版（音量 1.5 dB・タグ blind2-kai）／cue=11/6 の改良（kiku_hikari/cue.py の点数を拍ごとに・Claude の 8 小節格子の上で）")
     ap.add_argument("--cue-params", default="{}", help="--chorus-rule cue の閾値などの上書き（JSON・tools/chorus_replay.py と同じ名前）")
+    ap.add_argument("--structure-prior", default=None, help="曲構成の型（数字だけの JSON・kiku_hikari/prior.py）。cue の閾値と Claude の構成規則の 1 行に使う。未指定なら従来どおり")
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--no-audio", action="store_true")
     ap.add_argument("--play", help="自己試験: この WAV を出力デバイスから鳴らす（マイクで聴く）")
@@ -154,15 +155,18 @@ def main(argv=None):
         viz = Viz()
     engine = ForesightEngine(adopt=a.adopt) if a.mode == "claude" else BeatEngine()
     look = None
+    from .prior import load_prior, prior_text
+    prior = load_prior(a.structure_prior) if a.mode == "claude" else None
     if a.mode == "claude" and a.profile in ("new", "show"):
         from .look import Look
-        look = Look(chorus_max=a.chorus_max, first_bars=a.no_chorus_first_bars, show=(a.profile == "show"), rule=a.chorus_rule, cue_params=json.loads(a.cue_params))
+        look = Look(chorus_max=a.chorus_max, first_bars=a.no_chorus_first_bars, show=(a.profile == "show"), rule=a.chorus_rule, cue_params=json.loads(a.cue_params), prior=prior)
     log.event("profile", profile=a.profile if a.mode == "claude" else "-", chorus_max=a.chorus_max, no_chorus_first_bars=a.no_chorus_first_bars,
-              chorus_rule=a.chorus_rule if look is not None else "-", cue_params=look.cp if (look is not None and a.chorus_rule == "cue") else {})
+              chorus_rule=a.chorus_rule if look is not None else "-", cue_params=look.cp if (look is not None and a.chorus_rule == "cue") else {},
+              structure_prior=os.path.basename(a.structure_prior) if prior else "")
     worker = summarizer = None
     if a.mode == "claude":
         from .claude_worker import ClaudeWorker, FeatureSummarizer
-        worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log, variant=a.summary, knowledge=a.knowledge, color=a.color)
+        worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log, variant=a.summary, knowledge=a.knowledge, color=a.color, extra_rules=prior_text(prior))
         summarizer = FeatureSummarizer(variant=a.summary)
         log.event("claude_config", model=worker.model, effort=a.effort, every=a.every, summary=a.summary, adopt=a.adopt,
                   knowledge=os.path.basename(a.knowledge) if a.knowledge else "lighting_knowledge_v2.json", color=a.color)
