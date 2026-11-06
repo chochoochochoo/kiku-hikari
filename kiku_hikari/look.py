@@ -37,7 +37,7 @@ class Look:
                    "grid_anchor": 0, "ga_hf": 3.0, "ga_lv": 1.5, "ga_bright": 1.0, "ga_gap": 4,
                    # song_med=1: 「曲のそれまでより明るい・大きい」の基準を曲全体の中央値にする（評価の tools/ と同じ。0＝既定＝直近 14 秒の中央値・タグ chorus-v2 の挙動）。--grid-anchor で 1
                    "song_med": 0,
-                   # jev_veto=1（--jev-veto・11/7 本人決定 b）: cue が入ろうとした拍で判断 API（kiku_hikari/judge.py）に「サビの 1 小節目か」の確率を聞き、veto_thr 未満なら入らない。
+                   # jev_veto=1（--jev-veto・11/7 本人決定 b・main.py の既定は ON＝タグ chorus-v3・--no-jev-veto で 0）: cue が入ろうとした拍で判断 API（kiku_hikari/judge.py）に「サビの 1 小節目か」の確率を聞き、veto_thr 未満なら入らない。
                    # 答えが veto_timeout 秒以内に来なければ入る（fail-open）。鍵が無ければ聞かない＝今どおり
                    "jev_veto": 0, "veto_thr": 0.15, "veto_timeout": 1.0, **(cue_params or {})}
         self.judge = None                  # kiku_hikari.judge.Judge（main.py が --jev-veto の時に入れる）

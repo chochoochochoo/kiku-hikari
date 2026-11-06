@@ -417,3 +417,8 @@
 ### V202611.083 – 20261107-01:24:21
 **指示:** （本人決定 11/7 00:5x・入口経由）「Jev の veto（cue が開こうとした時に判断 API が止める形）を本番 15 本で測る。調整に使っていない m01/m02/m04/m05 も含めて過学習を見る。任意の旗・fail-open・既定は『的中が下がらず空振りが減る』が本番で出た時だけ変える（提案まで・タグは入口の返事後）。クライアントは標準ライブラリの新規コード。README に判断 API の 1 行。費用報告」
 **変更:** `look.py` に `jev_veto`（cue の入りを判断待ちにし、noul が veto_thr 0.15 未満なら入らない・veto_timeout 1.0 秒で fail-open・`_enter_cue`/`_resolve_veto`）、`main.py --jev-veto`（Judge を look に渡す・judge_config／look_judge／look_veto をログ）、`judge.py` に同期版 `ask_sync`。実測（本番疑似走行）: 5 曲 15 本 的中 7→8/27・空振り 26→17、未調整 4 曲 12 本 8→10/36・55→42、聞いた 112・止めた 52・時間切れ 0・往復中央値 0.18 秒・1 曲約 0.01 円。完成条件には届かず。docs/eval-chorus.md に節と表、README の秘密値の節と残り項目の段落に追記。既定は変えていない（提案: `--jev-veto` 相当を chorus-v3 候補に）
+
+---
+### V202611.084 – 20261107-01:27:46
+**指示:** （本人決定 11/7 01:4x・入口経由）「的中が下がらず空振りが減る」を本番で満たしたので既定を変える: main.py の既定 jev_veto=1（鍵の無い環境は今のまま＝fail-open）・タグ chorus-v3・README/docs の既定の記述（rise・cue は引数で戻せること、負けをそのまま）
+**変更:** `main.py --jev-veto` を BooleanOptionalAction・既定 True（`--no-jev-veto` で切る）・help と `--chorus-rule` の help を更新、`look.py` のコメント、README（残り項目の段落に既定変更の根拠と負け・目次の行）、docs/eval-chorus.md に本人決定の行。鍵無しの疑似走行で judge_config available=false・profile jev_veto=1（聞かずに今どおり動く）を確認。タグ chorus-v3
