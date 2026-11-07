@@ -98,7 +98,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Stinger Spot" posx="0" posz="-2.9" bsch="12">
+<YPLT_PLIN inid="Stinger Spot" posz="-2.9" bsch="12">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -815,14 +815,14 @@
 <YPLT_PLTS_objs>
 <YPLT_PLOS>
 <YPLT_PLOS_objs>
-<YPLT_PLOB inid="person" posx="-1" posz="-0.7">
+<YPLT_PLOB inid="person" posx="-1" posz="-1">
 <YPLT_PLOB_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
 <YUND_PRAM i="pBSModel" v="person_f.bsm"/>
 <YUND_PRAM i="pHgt" v="1.7"/>
 <YUND_PRAM i="pCbd" v="(0.939,0.849,0.636)"/>
-<YUND_PRAM i="pPos" v="7"/>
+<YUND_PRAM i="pPos" v="5"/>
 <YUND_PRAM i="pHar" v="3"/>
 <YUND_PRAM i="pChr" v="(0.1,0.1,0.1)"/>
 <YUND_PRAM i="pTop" v="1"/>
@@ -838,7 +838,7 @@
 </YUND_PRMS>
 </YPLT_PLOB_prms>
 </YPLT_PLOB>
-<YPLT_PLOB inid="person" posx="-0.072" posy="0.013">
+<YPLT_PLOB inid="person" posx="-0.072" posy="0.013" posz="-0.3">
 <YPLT_PLOB_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -861,14 +861,14 @@
 </YUND_PRMS>
 </YPLT_PLOB_prms>
 </YPLT_PLOB>
-<YPLT_PLOB inid="person" posx="1.023" posy="0.028" posz="-0.7">
+<YPLT_PLOB inid="person" posx="1.023" posy="0.028" posz="-1">
 <YPLT_PLOB_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
 <YUND_PRAM i="pBSModel" v="person_f.bsm"/>
 <YUND_PRAM i="pHgt" v="1.65"/>
 <YUND_PRAM i="pCbd" v="(0.939,0.849,0.636)"/>
-<YUND_PRAM i="pPos" v="5"/>
+<YUND_PRAM i="pPos" v="7"/>
 <YUND_PRAM i="pHar" v="1"/>
 <YUND_PRAM i="pChr" v="(0.1,0.1,0.1)"/>
 <YUND_PRAM i="pTop" v="1"/>

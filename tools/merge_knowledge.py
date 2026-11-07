@@ -52,6 +52,8 @@ def main():
         for k in REQUIRED:
             if dec.get(k):
                 r[k] = dec[k]
+        if not dec.get("why"):                      # 作者が why を書かなかった時は、その事実を書く（v2 の「原文に記述は無い」の文を残さない）
+            r["why"] = "作者が現場の判断で採用した規則。理由の文は作者未記入。手元の原文に記述は無い。"
         r["source"] = dec.get("source") or AUTHOR_SOURCE
         r["v2"] = "作者"
         log.append(f"{rid} 採用（作者の本文）")
@@ -75,7 +77,8 @@ def main():
     d = dict(base)
     d["version"] = "0.3（v2 第 3 版＋作者の規則）"
     d["written"] = datetime.date.today().isoformat()
-    d["note"] = base.get("note", "") + f" ／v3: 作者が自分の現場の判断で規則を書き足した（{n_author} 本・source は「{AUTHOR_SOURCE}」・v2 欄は「作者」）。v2 の規則の文面は変えていない。測定（docs/eval-*.md）は v2 で行った。"
+    n_own = sum(1 for r in rules if r.get("v2") == "作者" and r.get("source") == AUTHOR_SOURCE)
+    d["note"] = base.get("note", "") + f" ／v3: 作者が採否と本文を決めた規則 {n_author} 本（source が「{AUTHOR_SOURCE}」の {n_own} 本と、それ以外の出どころから作者が採否した {n_author - n_own} 本・v2 欄は「作者」）。v2 の他の規則の文面は変えていない。測定（docs/eval-*.md）は v2 で行った。"
     d["rules"] = rules
     s = json.dumps(d, ensure_ascii=False, indent=2)
     for w, r in ARTIST_REWORD:                      # 規約: 既存アーティスト名はプロンプトに出さない（出典 URL は残す）
