@@ -459,3 +459,8 @@
 **変更:** コード・README は変更なし（記帳のみ）。結果: 全参照 93 コミット・7 参照に鍵の型（Anthropic・Google・GitHub・AWS・Slack・秘密鍵ブロック・Bearer）は無し、tools/secret_scan.py --history も OK（360 件）、GitHub の secret scanning 警告 0・.env は一度もコミットされていない。履歴に残るもの: 10.x の機器アドレス（7a96c72・ab633b1・bfa7358・8840752・30d05e5・d114f16。現行ファイルは da66023 で x.x.x.x）と Windows のユーザーパス（logs/public の audio_start 行 26 本・tools/ab_kb.py）。.env.example の 1e04cfe 3 行目は読取拒否で判別できず本人へ。GitHub: public・共同作業者は所有者のみ・secret scanning と push protection は有効・main の保護なし・Pages 無し・Actions の secret 0・deploy key 0。README の 7 点はすべてあり。清潔な clone（venv・README の pip 行）で beat／rules／claude（鍵なし）／--viz の起動を確認（exit 0）。鍵なしの claude モードは画面に警告が出ずログの claude_error だけ
 **補記（20261107-13:47）:** 要対応 1（1e04cfe の .env.example 3 行目）は本人が表示して雛形の例値と確認＝解消。任意項目（10.x と ユーザーパスの履歴・main の保護・鍵なし時の警告）は本人判断で「そのまま」。コード変更なし
 **補記 2（20261107-16:00・第 6 弾 録画の質疑 5 点の確認）:** ①履歴は squash・書き換えしない（10.x とパスもそのまま＝確定） ②リポジトリは 1 つ（案 B の再生ページも同じリポジトリ内に置く） ③審査員に API を触らせる公開 URL は無し（README 32 行目に明記済み） ④露出キー無し ⑤公開ログ 25 本の設定行（config・artnet_discover・claude_config・judge_config）は node x.x.x.x／MAC xx:…／知識ファイル名／モデル名のみ、README の設定値は変数名だけ。すべて該当なし・変更なし
+
+---
+### V202611.092 – 20261107-16:27:43
+**指示:** （入口経由・11/7 16:1x・本人決定）文章作法 Skill（shokai/agent-skills kuden/writing）の 4 条＝①解釈がぶれない文 ②太字で重要性を示さない ③丸括弧の補足を使わない ⑤URL で終わる行に句点を付けない、を README と提出文に適用。空白の規則は変えない。意味と数字は変えない。履歴は書き換えない
+**変更:** README.md のみ（docs/ に提出回答・TEISHUTSU 系のファイルは無く、それらは ~/Claude/bwc-japan2026 側）。丸括弧 262→4（残りは題名の読み「聴く・光」と設問の原文「曲の雰囲気（色）に合う」2 箇所）、太字 35→23（残りは項目名・区分名・段落の見出し扱い）、URL で終わる行 3 本は句点なし。見出し 6 本の括弧を「—」に。数字・コード片・URL は機械照合で不変（110 は言い直しで 1 回増）。知識 v2 の説明にあった既存アーティスト名 1 件は「電子ロックの別枠」に置き換え（README に既存アーティスト名を書かない規則）。コードは不変
