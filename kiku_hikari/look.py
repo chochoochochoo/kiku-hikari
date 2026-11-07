@@ -5,7 +5,7 @@
   1. verse は暗く少数（Par 中央 2 台・35% 以下）、サビで全灯 100%
   2. pre_chorus の溜めを積み上げに（Par を 1 拍ごとに 2→8 台・スポットは減らす・サビ頭の 1 拍前は暗転→サビ頭で全灯）
   3. キメ（大きなドラムのアクセント）に 1 拍だけ全灯で反応（2.5 小節に 1 回まで）
-  4. 切り替えに人の手の速さ（区間ごとのフェード・verse 1.0 秒など。サビ中は拍の明滅を残すため 0.06 秒。キメ・暗転は瞬時。サビ頭は 11/8 から既定 2 拍のフェードイン・--open-fade-beats 0 で瞬時）
+  4. 切り替えに人の手の速さ（区間ごとのフェード・verse 1.0 秒など。サビ中は拍の明滅を残すため 0.06 秒。キメ・暗転は瞬時。サビ頭は 11/8 から既定 8 拍のフェードイン・--open-fade-beats 0 で瞬時）
   5. サビの色を回ごとに変える（2 回目は組を替え、3 回目以降・ブレイク明けは白を足す）。ムービングはサビだけ大きく速く・verse は止めて白で人を抜く
 拍・安全（Safety のスルーレートと上限）は既存のまま。ここは Par・スポット・Stinger の値を後から書き換えるだけ。
 """
@@ -21,7 +21,7 @@ FADE_S = {"verse": 1.0, "intro": 1.2, "outro": 1.5, "bridge": 1.2, "pre_chorus":
 
 
 class Look:
-    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False, rule: str = "rise", cue_params: dict | None = None, prior: dict | None = None, quantize: int = 0, open_fade_beats: float = 2.0):
+    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False, rule: str = "rise", cue_params: dict | None = None, prior: dict | None = None, quantize: int = 0, open_fade_beats: float = 8.0):
         self.prior = prior             # 曲構成の型（kiku_hikari/prior.py・--structure-prior）。None なら閾値に触らない
         self.n_cue = 0; self.ch_bar = None   # cue: これまでのサビ入りの回数と、直近のサビ入りの小節番号（型の照合用）
         self.chorus_max = chorus_max   # サビの上限（小節）。11/4 夜に 8→16（一般的なサビの長さ・本人決定）
@@ -45,7 +45,7 @@ class Look:
         # N>0 なら、サビの入り・キメ・ブレイクと verse の切替を「拍カウントの N 小節の頭」の拍に限る（候補は頭まで保留・N 小節で捨てる）。
         # 頭は拍追従の数え（engine.beat_count % (4N) == 1）で、曲の 1 拍目と一致する保証は無い。開きと拍の明滅は engine.py と apply で止める
         self.q = int(quantize or 0)
-        # サビ頭のフェードイン（11/8 本人決定「カットインだとドンピシャでないと気持ちよくない。フェードインなら多少ごまかせる」・--open-fade-beats・既定 2 拍）:
+        # サビ頭のフェードイン（11/8 本人決定「カットインだとドンピシャでないと気持ちよくない。フェードインなら多少ごまかせる」・--open-fade-beats・既定 8 拍。最初の 2 拍は v5e を見て「早い。3〜4 秒かければ判断のタイムラグをごまかせそう」で 8 拍に）:
         # サビの入りの白足し・全灯・ムービングの明るさ・色の切替を、cue の拍から open_fade_beats 拍かけて直線で上げる（上がり始めは cue の拍のまま）。0＝従来のカットイン。キメの 1 拍白は瞬時のまま
         self.ofb = float(open_fade_beats or 0.0)
         self.fade_until = -99.0            # フェードの到達予定時刻
