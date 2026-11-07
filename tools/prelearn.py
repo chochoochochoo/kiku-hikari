@@ -106,6 +106,8 @@ def from_truth(path: str, bt: list[float], song_s: float) -> CueSheet:
         if pts and isinstance(pts[0], dict):            # 耳の正解 sections/<曲>.json: [{"section": "verse", "t": 16.3}, ...]（区間名つき）
             k = 0
             for e in sorted(pts, key=lambda e: e["t"]):
+                if e.get("level") == "allin1_continuation":      # 仮正解: 同じ区間の続き（区間の頭ではない）
+                    continue
                 name = e.get("section", "verse"); name = "intro" if name in ("boundary", "start") else name
                 try:
                     sec = Section(name)
