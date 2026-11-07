@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <YPLT_PLTS>
 <YPLT_PLTS_inss>
-<YPLT_PLIN inid="Stinger Spot" posx="-2.204" posz="-2.7">
+<YPLT_PLIN inid="Stinger Spot" posx="-3.2" posz="-2.9">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -98,7 +98,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Stinger Spot" posz="-2.7" bsch="12">
+<YPLT_PLIN inid="Stinger Spot" posx="0" posz="-2.9" bsch="12">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -195,7 +195,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Stinger Spot" posx="2" posz="-2.7" bsch="23">
+<YPLT_PLIN inid="Stinger Spot" posx="3.2" posz="-2.9" bsch="23">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -292,7 +292,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Spot" posx="-2.481" posy="3.1" posz="1.5" roty="-26" rotx="-38" bsch="501">
+<YPLT_PLIN inid="Spot" posx="-3" posy="4" posz="3" roty="-12" rotx="-35" bsch="501">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -315,7 +315,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Spot" posx="-1.763" posy="3.1" posz="1.5" roty="-30" rotx="-44" bsch="502">
+<YPLT_PLIN inid="Spot" posx="-1.8" posy="4" posz="3" roty="-12" rotx="-35" bsch="502">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -338,7 +338,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Spot" posx="-0.948" posy="3.1" posz="1.5" roty="-26" rotx="-48" bsch="503">
+<YPLT_PLIN inid="Spot" posx="-0.6" posy="4" posz="3" roty="-8" rotx="-35" bsch="503">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -361,7 +361,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Spot" posx="0.9" posy="3.1" posz="1.5" roty="26" rotx="-48" bsch="504">
+<YPLT_PLIN inid="Spot" posx="0.6" posy="4" posz="3" roty="8" rotx="-35" bsch="504">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -384,7 +384,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Spot" posx="1.8" posy="3.1" posz="1.5" roty="30" rotx="-44" bsch="505">
+<YPLT_PLIN inid="Spot" posx="1.8" posy="4" posz="3" roty="12" rotx="-35" bsch="505">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -407,7 +407,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Spot" posx="2.5" posy="3.1" posz="1.5" roty="26" rotx="-38" bsch="506">
+<YPLT_PLIN inid="Spot" posx="3" posy="4" posz="3" roty="12" rotx="-35" bsch="506">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -430,7 +430,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Dotz Par 100" posx="-3.5" posy="1.6" posz="-2.8" roty="-180" rotx="-40" bsch="34">
+<YPLT_PLIN inid="Dotz Par 100" posx="-3" posy="3.4" posz="-2.7" roty="-180" rotx="-45" bsch="34">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -457,7 +457,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Dotz Par 100" posx="-2.5" posy="1.6" posz="-2.8" roty="-180" rotx="-40" bsch="43">
+<YPLT_PLIN inid="Dotz Par 100" posx="-2" posy="0.25" posz="-2.9" roty="-180" rotx="25" bsch="43">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -484,7 +484,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Dotz Par 100" posx="-1.5" posy="1.6" posz="-2.8" roty="-180" rotx="-40" bsch="52">
+<YPLT_PLIN inid="Dotz Par 100" posx="-1" posy="3.4" posz="-2.7" roty="-180" rotx="-45" bsch="52">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -511,7 +511,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Dotz Par 100" posx="-0.5" posy="1.6" posz="-2.8" roty="-180" rotx="-40" bsch="61">
+<YPLT_PLIN inid="Dotz Par 100" posx="-0.667" posy="0.25" posz="-2.9" roty="-180" rotx="25" bsch="61">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -538,7 +538,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Dotz Par 100" posx="0.5" posy="1.6" posz="-2.8" roty="-180" rotx="-40" bsch="70">
+<YPLT_PLIN inid="Dotz Par 100" posx="0.667" posy="0.25" posz="-2.9" roty="-180" rotx="25" bsch="70">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -565,7 +565,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Dotz Par 100" posx="1.5" posy="1.6" posz="-2.8" roty="-180" rotx="-40" bsch="79">
+<YPLT_PLIN inid="Dotz Par 100" posx="1" posy="3.4" posz="-2.7" roty="-180" rotx="-45" bsch="79">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -592,7 +592,7 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Dotz Par 100" posx="2.5" posy="1.6" posz="-2.8" roty="-180" rotx="-40" bsch="88">
+<YPLT_PLIN inid="Dotz Par 100" posx="2" posy="0.25" posz="-2.9" roty="-180" rotx="25" bsch="88">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>
@@ -619,7 +619,169 @@
 </YUND_PRMS>
 </YPLT_PLIN_ctls>
 </YPLT_PLIN>
-<YPLT_PLIN inid="Dotz Par 100" posx="3.5" posy="1.6" posz="-2.8" roty="-180" rotx="-40" bsch="97">
+<YPLT_PLIN inid="Dotz Par 100" posx="3" posy="3.4" posz="-2.7" roty="-180" rotx="-45" bsch="97">
+<YPLT_PLIN_prms>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="pCrv" v="0"/>
+<YUND_PRAM i="pMod" v="3"/>
+<YUND_PRAM i="pLns" v="1"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_prms>
+<YPLT_PLIN_ctls>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="cR" v="0"/>
+<YUND_PRAM i="cG" v="0"/>
+<YUND_PRAM i="cB" v="0"/>
+<YUND_PRAM i="cDim" v="0"/>
+<YUND_PRAM i="cMod" v="3"/>
+<YUND_PRAM i="cDmC" v="0"/>
+<YUND_PRAM i="cMac" v="0"/>
+<YUND_PRAM i="cPrg" v="0"/>
+<YUND_PRAM i="cPgs" v="0"/>
+<YUND_PRAM i="cStb" v="0"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_ctls>
+</YPLT_PLIN>
+<YPLT_PLIN inid="Dotz Par 100" posx="-4" posy="2.2" posz="-0.2" roty="-60" rotx="-12" bsch="106">
+<YPLT_PLIN_prms>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="pCrv" v="0"/>
+<YUND_PRAM i="pMod" v="3"/>
+<YUND_PRAM i="pLns" v="1"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_prms>
+<YPLT_PLIN_ctls>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="cR" v="0"/>
+<YUND_PRAM i="cG" v="0"/>
+<YUND_PRAM i="cB" v="0"/>
+<YUND_PRAM i="cDim" v="0"/>
+<YUND_PRAM i="cMod" v="3"/>
+<YUND_PRAM i="cDmC" v="0"/>
+<YUND_PRAM i="cMac" v="0"/>
+<YUND_PRAM i="cPrg" v="0"/>
+<YUND_PRAM i="cPgs" v="0"/>
+<YUND_PRAM i="cStb" v="0"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_ctls>
+</YPLT_PLIN>
+<YPLT_PLIN inid="Dotz Par 100" posx="-4" posy="2.2" posz="0.5" roty="-60" rotx="-12" bsch="115">
+<YPLT_PLIN_prms>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="pCrv" v="0"/>
+<YUND_PRAM i="pMod" v="3"/>
+<YUND_PRAM i="pLns" v="1"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_prms>
+<YPLT_PLIN_ctls>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="cR" v="0"/>
+<YUND_PRAM i="cG" v="0"/>
+<YUND_PRAM i="cB" v="0"/>
+<YUND_PRAM i="cDim" v="0"/>
+<YUND_PRAM i="cMod" v="3"/>
+<YUND_PRAM i="cDmC" v="0"/>
+<YUND_PRAM i="cMac" v="0"/>
+<YUND_PRAM i="cPrg" v="0"/>
+<YUND_PRAM i="cPgs" v="0"/>
+<YUND_PRAM i="cStb" v="0"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_ctls>
+</YPLT_PLIN>
+<YPLT_PLIN inid="Dotz Par 100" posx="-4" posy="2.2" posz="1.2" roty="-60" rotx="-12" bsch="124">
+<YPLT_PLIN_prms>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="pCrv" v="0"/>
+<YUND_PRAM i="pMod" v="3"/>
+<YUND_PRAM i="pLns" v="1"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_prms>
+<YPLT_PLIN_ctls>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="cR" v="0"/>
+<YUND_PRAM i="cG" v="0"/>
+<YUND_PRAM i="cB" v="0"/>
+<YUND_PRAM i="cDim" v="0"/>
+<YUND_PRAM i="cMod" v="3"/>
+<YUND_PRAM i="cDmC" v="0"/>
+<YUND_PRAM i="cMac" v="0"/>
+<YUND_PRAM i="cPrg" v="0"/>
+<YUND_PRAM i="cPgs" v="0"/>
+<YUND_PRAM i="cStb" v="0"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_ctls>
+</YPLT_PLIN>
+<YPLT_PLIN inid="Dotz Par 100" posx="4" posy="2.2" posz="-0.2" roty="60" rotx="-12" bsch="133">
+<YPLT_PLIN_prms>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="pCrv" v="0"/>
+<YUND_PRAM i="pMod" v="3"/>
+<YUND_PRAM i="pLns" v="1"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_prms>
+<YPLT_PLIN_ctls>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="cR" v="0"/>
+<YUND_PRAM i="cG" v="0"/>
+<YUND_PRAM i="cB" v="0"/>
+<YUND_PRAM i="cDim" v="0"/>
+<YUND_PRAM i="cMod" v="3"/>
+<YUND_PRAM i="cDmC" v="0"/>
+<YUND_PRAM i="cMac" v="0"/>
+<YUND_PRAM i="cPrg" v="0"/>
+<YUND_PRAM i="cPgs" v="0"/>
+<YUND_PRAM i="cStb" v="0"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_ctls>
+</YPLT_PLIN>
+<YPLT_PLIN inid="Dotz Par 100" posx="4" posy="2.2" posz="0.5" roty="60" rotx="-12" bsch="142">
+<YPLT_PLIN_prms>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="pCrv" v="0"/>
+<YUND_PRAM i="pMod" v="3"/>
+<YUND_PRAM i="pLns" v="1"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_prms>
+<YPLT_PLIN_ctls>
+<YUND_PRMS>
+<YUND_PRMS_prms>
+<YUND_PRAM i="cR" v="0"/>
+<YUND_PRAM i="cG" v="0"/>
+<YUND_PRAM i="cB" v="0"/>
+<YUND_PRAM i="cDim" v="0"/>
+<YUND_PRAM i="cMod" v="3"/>
+<YUND_PRAM i="cDmC" v="0"/>
+<YUND_PRAM i="cMac" v="0"/>
+<YUND_PRAM i="cPrg" v="0"/>
+<YUND_PRAM i="cPgs" v="0"/>
+<YUND_PRAM i="cStb" v="0"/>
+</YUND_PRMS_prms>
+</YUND_PRMS>
+</YPLT_PLIN_ctls>
+</YPLT_PLIN>
+<YPLT_PLIN inid="Dotz Par 100" posx="4" posy="2.2" posz="1.2" roty="60" rotx="-12" bsch="151">
 <YPLT_PLIN_prms>
 <YUND_PRMS>
 <YUND_PRMS_prms>

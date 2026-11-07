@@ -103,6 +103,9 @@ class DotzPar9:
 
 
 # Par 8 台の配置パターン（2026-11-03 本人指示）。対の色＝奇偶の 2 色目（色相の反対寄り・色ホイール 8 色の中から）
+# 9 台目以降はサイドの Par（2026-11-07 本人決定「アドレス全て個別に」・配置 v2e: 袖のスタンドに T バーで 3 台ずつ・アドレス 106〜151）。
+#   列の 8 台の規則（中央 2 台・中央から外へ）は最初の PAR_ROW 台にだけ掛け、サイドは claude モードではサビとキメだけ 100%・他は消灯
+PAR_ROW = 8
 PAR_PAIR = {"white": "blue", "red": "blue", "orange": "light_blue", "yellow": "pink", "green": "pink", "blue": "white", "light_blue": "orange", "pink": "light_blue"}
 
 
@@ -117,19 +120,25 @@ def par_pattern(n: int, mode: str, color: str, next_color: str = "", section: st
         return []
     if mode == "beat":
         return [(PAR_RGB["white"], 1.0)] * n
-    if mode != "claude":                                      # ② / direct: 表の色と対の色を奇偶に
+    if mode != "claude":                                      # ② / direct: 表の色と対の色を奇偶に（サイドも同じ）
         pair = PAR_PAIR.get(color, "white")
         return [(PAR_RGB.get(color if i % 2 == 0 else pair, PAR_RGB["white"]), 1.0) for i in range(n)]
+    nr = min(n, PAR_ROW)                                      # 列の台数。9 台目以降はサイド（下の extra）
     nxt = next_color if next_color and next_color != color else PAR_PAIR.get(color, "white")
     if section == "pre_chorus":                               # 主色→次の色のグラデーション（次の色替えの予告）
-        out = [(blend(color, nxt, i / max(1, n - 1)), 1.0) for i in range(n)]
+        out = [(blend(color, nxt, i / max(1, nr - 1)), 1.0) for i in range(nr)]
     elif section == "chorus":                                 # 奇偶 2 色・小節ごとに入れ替え
-        out = [(PAR_RGB.get(color if (i + bar) % 2 == 0 else nxt, PAR_RGB["white"]), 1.0) for i in range(n)]
+        out = [(PAR_RGB.get(color if (i + bar) % 2 == 0 else nxt, PAR_RGB["white"]), 1.0) for i in range(nr)]
     else:
-        out = [(PAR_RGB.get(color, PAR_RGB["white"]), 1.0)] * n
+        out = [(PAR_RGB.get(color, PAR_RGB["white"]), 1.0)] * nr
+    full = True
     if since_open < 0.5:                                      # 開いた直後: 中央から外へ 0.5 秒で広げる
-        c = (n - 1) / 2; reach = since_open / 0.5 * (c + 0.5)
+        c = (nr - 1) / 2; reach = since_open / 0.5 * (c + 0.5)
         out = [(rgb, 1.0 if abs(i - c) <= reach else 0.0) for i, (rgb, _) in enumerate(out)]
+        full = reach >= c
+    if n > nr:                                                # サイドの Par: サビは列と同じ 2 色・列が端まで広がってから 100%。サビ以外は消灯
+        extra = [(PAR_RGB.get(color if (i + bar) % 2 == 0 else nxt, PAR_RGB["white"]), 1.0 if (section == "chorus" and full) else 0.0) for i in range(nr, n)]
+        out = out + extra
     return out
 
 

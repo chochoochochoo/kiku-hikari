@@ -95,7 +95,7 @@ def main(argv=None):
     ap.add_argument("--node"); ap.add_argument("--universe", type=int, default=None); ap.add_argument("--address", type=int, default=1)
     ap.add_argument("--fixtures", type=int, default=1, help="灯体の台数（アドレスは --address から 11ch ずつ。左右は Pan を対称に）")
     ap.add_argument("--pars", type=int, default=0, help="ADJ Dotz Par（9ch モード）の台数（既定 0＝従来どおり Stinger だけ）。色・明るさ・シャッターは Stinger と同じ値を受ける")
-    ap.add_argument("--par-address", type=int, default=34, help="Dotz Par 1 台目の開始アドレス（9ch ずつ。8 台なら 34/43/52/61/70/79/88/97）")
+    ap.add_argument("--par-address", type=int, default=34, help="Dotz Par 1 台目の開始アドレス（9ch ずつ。8 台なら 34/43/52/61/70/79/88/97。14 台＝配置 v2e なら 106/115/124/133/142/151 がサイドの 6 台で、claude モードではサビとキメだけ点く）")
     ap.add_argument("--spots", type=int, default=0, help="汎用スポット（1ch ディマー）の台数（既定 0）。左→右の順に --spot-address から 1ch ずつ")
     ap.add_argument("--spot-address", type=int, default=501)
     ap.add_argument("--chorus-bars", type=int, default=8, help="③ の Par/スポット: Claude の「あと N 小節」が 0 に達した所からこの小節数をサビ扱い（0=Claude の区間名だけ）。手前 2 小節は pre_chorus 扱い")

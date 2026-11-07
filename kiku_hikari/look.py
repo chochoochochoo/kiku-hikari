@@ -14,7 +14,7 @@ from __future__ import annotations
 import math
 from collections import deque
 
-from .fixtures import PAR_PAIR, PAR_RGB
+from .fixtures import PAR_PAIR, PAR_RGB, PAR_ROW
 
 QUIET = ("intro", "verse", "bridge", "outro")
 FADE_S = {"verse": 1.0, "intro": 1.2, "outro": 1.5, "bridge": 1.2, "pre_chorus": 0.15, "chorus": 0.06, "break": 0.4, "interlude": 0.8}
@@ -264,6 +264,7 @@ class Look:
         to_boundary=Claude が小節数で答えた境界までの秒（pre_chorus の積み上げ用・無ければ None）"""
         bar_s = period_s * 4
         n, ns = len(pat), len(spots)
+        nr = min(n, PAR_ROW)                              # 列の Par の台数。9 台目以降はサイド（11/7 配置 v2e）: 中央 2 台・中央から外への規則は列にだけ掛け、サイドはサビとキメで 100%・他は消灯
         # サビの入り
         if sec == "chorus" and self.prev_sec != "chorus":
             self.chorus_n += 1; self.t_chorus = now
@@ -278,8 +279,8 @@ class Look:
         nxt = next_color if next_color and next_color != color else PAR_PAIR.get(color, "white")
         out = [(tuple(rgb), k) for rgb, k in pat]
         sp = list(spots)
-        if sec in QUIET:                                  # 1. 暗く少数・ムービングは止めて白で人を抜く
-            lo = (n - 2) // 2
+        if sec in QUIET:                                  # 1. 暗く少数・ムービングは止めて白で人を抜く（サイドは範囲外＝消灯）
+            lo = (nr - 2) // 2
             cap = 0.12 if self.show else 0.35             # 全灯版は 11/7 本人決定で 0.2 → 0.12（verse を沈めてサビとの対比を最大に・値だけ・配置とアドレスは不変）
             out = [(rgb, min(k, cap) if lo <= i < lo + 2 else 0.0) for i, (rgb, k) in enumerate(out)]
             p["pan"], p["tilt"] = 0.5, 0.55
@@ -291,8 +292,10 @@ class Look:
         elif sec == "pre_chorus":                         # 2. 積み上げ（中央から外へ）・最後の 1 拍は暗転
             frac = 0.0 if to_boundary is None else max(0.0, min(1.0, 1 - to_boundary / (2 * bar_s)))
             lit = 2 + 2 * min(3, int(frac * 4))           # 2→4→6→8
-            c = (n - 1) / 2
-            order = sorted(range(n), key=lambda i: abs(i - c))[:lit]
+            c = (nr - 1) / 2
+            order = sorted(range(nr), key=lambda i: abs(i - c))[:lit]
+            if lit >= nr:                                 # 列が全部点いたらサイドも点ける
+                order += list(range(nr, n))
             out = [(rgb, 1.0 if i in order else 0.0) for i, (rgb, k) in enumerate(out)]
             keep = max(0, round(ns * (1 - frac)))
             lo = (ns - keep) // 2
