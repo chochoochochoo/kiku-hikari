@@ -5,7 +5,7 @@
   1. verse は暗く少数（Par 中央 2 台・35% 以下）、サビで全灯 100%
   2. pre_chorus の溜めを積み上げに（Par を 1 拍ごとに 2→8 台・スポットは減らす・サビ頭の 1 拍前は暗転→サビ頭で全灯）
   3. キメ（大きなドラムのアクセント）に 1 拍だけ全灯で反応（2.5 小節に 1 回まで）
-  4. 切り替えに人の手の速さ（区間ごとのフェード・verse 1.0 秒など。サビ中は拍の明滅を残すため 0.06 秒。キメ・暗転は瞬時。サビ頭は 11/8 から既定 8 拍のフェードイン・--open-fade-beats 0 で瞬時）
+  4. 切り替えに人の手の速さ（区間ごとのフェード・verse 1.0 秒など。サビ中は拍の明滅を残すため 0.06 秒。キメ・暗転は瞬時。サビ頭は 11/8 から既定 8 拍のフェードイン（進捗の二乗の曲線・フェード中はキメを出さない）・--open-fade-beats 0 で瞬時）
   5. サビの色を回ごとに変える（2 回目は組を替え、3 回目以降・ブレイク明けは白を足す）。ムービングはサビだけ大きく速く・verse は止めて白で人を抜く
 拍・安全（Safety のスルーレートと上限）は既存のまま。ここは Par・スポット・Stinger の値を後から書き換えるだけ。
 """
@@ -21,7 +21,7 @@ FADE_S = {"verse": 1.0, "intro": 1.2, "outro": 1.5, "bridge": 1.2, "pre_chorus":
 
 
 class Look:
-    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False, rule: str = "rise", cue_params: dict | None = None, prior: dict | None = None, quantize: int = 0, open_fade_beats: float = 8.0):
+    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False, rule: str = "rise", cue_params: dict | None = None, prior: dict | None = None, quantize: int = 0, open_fade_beats: float = 8.0, hit_quiet: bool = False):
         self.prior = prior             # 曲構成の型（kiku_hikari/prior.py・--structure-prior）。None なら閾値に触らない
         self.n_cue = 0; self.ch_bar = None   # cue: これまでのサビ入りの回数と、直近のサビ入りの小節番号（型の照合用）
         self.chorus_max = chorus_max   # サビの上限（小節）。11/4 夜に 8→16（一般的なサビの長さ・本人決定）
@@ -48,6 +48,7 @@ class Look:
         # サビ頭のフェードイン（11/8 本人決定「カットインだとドンピシャでないと気持ちよくない。フェードインなら多少ごまかせる」・--open-fade-beats・既定 8 拍。最初の 2 拍は v5e を見て「早い。3〜4 秒かければ判断のタイムラグをごまかせそう」で 8 拍に）:
         # サビの入りの白足し・全灯・ムービングの明るさ・色の切替を、cue の拍から open_fade_beats 拍かけて直線で上げる（上がり始めは cue の拍のまま）。0＝従来のカットイン。キメの 1 拍白は瞬時のまま
         self.ofb = float(open_fade_beats or 0.0)
+        self.hit_quiet = bool(hit_quiet)   # 11/8 本人決定「静かな区間（verse・intro・outro・bridge）ではキメを出さない」。--hit-in-quiet で 11/7 までの動き（どの区間でも出す）に戻る
         self.fade_until = -99.0            # フェードの到達予定時刻
         self.q_pend = None                 # 量子化で頭まで保留しているサビ入りの候補 (b, s)
         self.q_sec = None                  # 量子化で保持している break/verse
@@ -281,6 +282,10 @@ class Look:
         self.onsets.append(float(onset))
         if not beat or len(self.onsets) < 80 or sec == "break" or (self.q > 0 and not self.beat_head):   # 量子化: キメは N 小節の頭の拍だけ
             return False
+        if now < self.fade_until:                         # 11/8 本人決定: サビ頭のフェードイン中はキメを出さない（v5g でフェードの終わり際 0.5 秒前のキメが 255 へ飛ばしていた）
+            return False
+        if sec in QUIET and not self.hit_quiet:           # 11/8 本人決定: 静かな区間ではキメを出さない（v5g の 19.5・23.5 小節目の全灯白フラッシュ）
+            return False
         xs = list(self.onsets)[:-1]
         m = sum(xs) / len(xs); sd = math.sqrt(sum((x - m) ** 2 for x in xs) / len(xs)) or 1e-6
         if onset > m + 3.0 * sd and level > 0.45 and now - self.t_hit >= 2.5 * bar_s and now - self.t_chorus > bar_s:
@@ -370,8 +375,10 @@ class Look:
         # 4. 人の手の速さ（明るさと色をフェード。キメは瞬時。サビ頭は fade_until まで直線で到達）
         tau = FADE_S.get(sec, 0.8)
         a = 1.0 if snap else 1.0 - math.exp(-dt / tau)
-        if fading:
-            a = min(1.0, dt / max(dt, self.fade_until - now))   # 残り時間で割る＝到達時刻に目標へ着く直線
+        if fading:                                        # 11/8 本人決定: 直線でなく知覚曲線（進捗 u の二乗・出だしをゆっくり）。R/G/B・dim・スポット・ムービングの明るさを同じ曲線で
+            fade_s = max(dt, self.fade_until - self.t_chorus)
+            u0 = max(0.0, min(1.0, (now - dt - self.t_chorus) / fade_s)); u1 = max(0.0, min(1.0, (now - self.t_chorus) / fade_s))
+            a = 1.0 if u0 >= 1.0 else min(1.0, (u1 * u1 - u0 * u0) / (1.0 - u0 * u0))   # 平滑化の 1 歩で u0²→u1² に進む係数（出発値に依らず全チャンネル共通）
             if self.fade_until - now <= dt:
                 self.events.append(("fade_end", now))
         tgt = [(rgb[0], rgb[1], rgb[2], k) for rgb, k in out]

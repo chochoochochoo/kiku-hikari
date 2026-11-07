@@ -108,7 +108,8 @@ def main(argv=None):
     ap.add_argument("--grid-anchor", action="store_true", help="--chorus-rule cue の格子の引き直し（11/7・chorus-v3 候補）: 音の境目（小節頭で高域と音量が同時に段差・look.py の ga_*）を起点に、Claude の 8 小節格子の窓の位相をずらす。未指定なら従来どおり（cue_params の grid_anchor=1 と同じ）")
     ap.add_argument("--jev-veto", action=argparse.BooleanOptionalAction, default=True, help="--chorus-rule cue の拒否役（11/7 本人決定・既定 ON・タグ chorus-v3）: cue が入ろうとした拍で判断 API（TypeSafe Jev・kiku_hikari/judge.py）に「サビの 1 小節目か」の確率を聞き、低ければ入らない。鍵（TYPESAFE_API_KEY か .env）が無い・落ちた・1 秒以内に返らない時は今どおり入る（fail-open＝chorus-v2 と同じ）。--no-jev-veto で切る")
     ap.add_argument("--prelearn", default=None, help="事前学習モード（11/8 本人の実験・提出物ではない）: tools/prelearn.py が書いたキューシート JSON。claude モードで、Claude のリアルタイムの読みの代わりに、このキューシートの区間・色・溜め・開き方を小節頭で出す。既定 None＝従来どおり")
-    ap.add_argument("--open-fade-beats", type=float, default=8.0, help="サビ頭のフェードイン（11/8 本人決定・既定 8 拍＝旅で約 3.8 秒。05:2x の最初の既定 2 拍は v5e を見た本人が「早い。3〜4 秒かければ判断のタイムラグをごまかせそう」で 8 拍に）: サビの入りの白足し・全灯・ムービングの明るさ・色の切替を cue の拍から N 拍かけて上げる。0＝従来のカットイン。キメの 1 拍白は瞬時のまま。look_chorus・engine_event open の秒（cue の拍）は変わらない")
+    ap.add_argument("--open-fade-beats", type=float, default=8.0, help="サビ頭のフェードイン（11/8 本人決定・既定 8 拍＝旅で約 3.8 秒。05:2x の最初の既定 2 拍は v5e を見た本人が「早い。3〜4 秒かければ判断のタイムラグをごまかせそう」で 8 拍に）: サビの入りの白足し・全灯・ムービングの明るさ・色の切替を cue の拍から N 拍かけて上げる。0＝従来のカットイン。上がり方は進捗の二乗の曲線（11/8 本人決定・出だしをゆっくり）。フェード中はキメを出さない。キメの 1 拍白は瞬時のまま。look_chorus・engine_event open の秒（cue の拍）は変わらない")
+    ap.add_argument("--hit-in-quiet", action="store_true", help="キメ（打音への 1 拍全台白）を静かな区間（verse・intro・outro・bridge）でも出す＝11/7 までの動き。既定は出さない（11/8 本人決定・v5g の verse 中の白フラッシュを受けて）")
     ap.add_argument("--quantize-bars", type=int, default=0, help="量子化（11/8 本人決定・第 3 段の回答者 D「2.8 や 4.8 等に限って明かりを作る」）: 0＝既定＝従来どおり。4 か 8 なら、サビの入り・キメ・ブレイクと verse の切替・開きを拍カウントの N 小節の頭に限り、拍ごとの明滅を止める。頭は拍追従の数えで、曲の 1 拍目と一致する保証は無い。効果は未測定")
     ap.add_argument("--candidates", action="store_true", help="② 候補選択式（11/7・chorus-v3 候補）: 要約に「これから来る小節頭 8 つの構造の手がかり表」（境目からの小節数・8 小節格子・前のサビからの小節数・音量の向き）を付け、Claude に次のサビの頭を 1 つ選ばせて（bars_to_chorus）その小節頭に窓を置く。未指定なら従来どおり")
     ap.add_argument("--chorus-hints", default=None, help="サビの頭の手がかりの文（テキスト・system に貼る）。指定すると Claude に「次のサビの頭まで何小節か」（bars_to_chorus）も答えさせ、その小節頭にもサビ判定の窓を置く。未指定なら従来どおり")
@@ -170,7 +171,7 @@ def main(argv=None):
         from .look import Look
         look = Look(chorus_max=a.chorus_max, first_bars=a.no_chorus_first_bars, show=(a.profile == "show"), rule=a.chorus_rule,
                     cue_params={**({"grid_anchor": 1, "song_med": 1} if a.grid_anchor else {}), **({"jev_veto": 1} if a.jev_veto else {}), **json.loads(a.cue_params)}, prior=prior,
-                    quantize=a.quantize_bars, open_fade_beats=a.open_fade_beats)
+                    quantize=a.quantize_bars, open_fade_beats=a.open_fade_beats, hit_quiet=a.hit_in_quiet)
         engine.q = a.quantize_bars
         if a.jev_veto:
             from .judge import Judge
@@ -178,7 +179,7 @@ def main(argv=None):
             log.event("judge_config", available=look.judge.available, veto_thr=look.cp["veto_thr"], veto_timeout=look.cp["veto_timeout"])
     log.event("profile", profile=a.profile if a.mode == "claude" else "-", chorus_max=a.chorus_max, no_chorus_first_bars=a.no_chorus_first_bars,
               chorus_rule=a.chorus_rule if look is not None else "-", cue_params=look.cp if (look is not None and a.chorus_rule == "cue") else {},
-              structure_prior=os.path.basename(a.structure_prior) if prior else "", quantize_bars=a.quantize_bars, open_fade_beats=a.open_fade_beats)
+              structure_prior=os.path.basename(a.structure_prior) if prior else "", quantize_bars=a.quantize_bars, open_fade_beats=a.open_fade_beats, hit_in_quiet=a.hit_in_quiet)
     worker = summarizer = None
     pre = None
     if a.mode == "claude" and a.prelearn:
