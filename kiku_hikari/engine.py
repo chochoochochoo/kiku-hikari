@@ -49,6 +49,7 @@ class ForesightEngine(BeatEngine):
         self.period_s = 0.5         # 直近の拍周期（step で更新）
         self.phase = 0.0
         self.last_late = None       # 直近に採った予測が、届いた時点で既に境界を過ぎていたか
+        self.q = 0                  # 量子化（--quantize-bars N・11/8）: 開きと救済を次の小節頭でなく、拍カウントの N 小節の頭に合わせる。0＝従来
 
     def on_foresight(self, fs, now: float, asked_at: float | None = None, bar_at_ask: int | None = None):
         """asked_at=依頼を出した時刻。seconds_to_boundary は Claude が見た要約（依頼の時点）からの秒数なので、そこから数える
@@ -88,8 +89,9 @@ class ForesightEngine(BeatEngine):
         bar_s = period_s * self.bpb
         # 開き: 予測境界の直前の小節頭〜直後の小節頭のうち、境界に近い方
         if self.boundary_at is not None and self.open_at is None and now >= self.boundary_at - bar_s:
-            beats_into_bar = (self.beat_count - 1) % self.bpb + phase
-            to_next_bar = (self.bpb - beats_into_bar) * period_s
+            cyc = self.bpb * max(1, self.q)                 # 量子化なら N 小節（4N 拍）を 1 周期に
+            beats_into_bar = (self.beat_count - 1) % cyc + phase
+            to_next_bar = (cyc - beats_into_bar) * period_s
             self.open_at = now + to_next_bar
         if self.open_at is not None and now >= self.open_at:
             self.opened_until = now + 2 * bar_s

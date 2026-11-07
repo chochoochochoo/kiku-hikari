@@ -21,7 +21,7 @@ FADE_S = {"verse": 1.0, "intro": 1.2, "outro": 1.5, "bridge": 1.2, "pre_chorus":
 
 
 class Look:
-    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False, rule: str = "rise", cue_params: dict | None = None, prior: dict | None = None):
+    def __init__(self, chorus_max: int = 16, first_bars: int = 0, show: bool = False, rule: str = "rise", cue_params: dict | None = None, prior: dict | None = None, quantize: int = 0):
         self.prior = prior             # 曲構成の型（kiku_hikari/prior.py・--structure-prior）。None なら閾値に触らない
         self.n_cue = 0; self.ch_bar = None   # cue: これまでのサビ入りの回数と、直近のサビ入りの小節番号（型の照合用）
         self.chorus_max = chorus_max   # サビの上限（小節）。11/4 夜に 8→16（一般的なサビの長さ・本人決定）
@@ -41,6 +41,13 @@ class Look:
                    # 答えが veto_timeout 秒以内に来なければ入る（fail-open）。鍵が無ければ聞かない＝今どおり
                    "jev_veto": 0, "veto_thr": 0.15, "veto_timeout": 1.0, **(cue_params or {})}
         self.judge = None                  # kiku_hikari.judge.Judge（main.py が --jev-veto の時に入れる）
+        # 量子化（11/8 本人決定・--quantize-bars N・既定 0＝従来どおり）: 第 3 段の回答者 D「2.8（ツーエイト）や 4.8 等に限って明かりを作れるようになれば」。
+        # N>0 なら、サビの入り・キメ・ブレイクと verse の切替を「拍カウントの N 小節の頭」の拍に限る（候補は頭まで保留・N 小節で捨てる）。
+        # 頭は拍追従の数え（engine.beat_count % (4N) == 1）で、曲の 1 拍目と一致する保証は無い。開きと拍の明滅は engine.py と apply で止める
+        self.q = int(quantize or 0)
+        self.q_pend = None                 # 量子化で頭まで保留しているサビ入りの候補 (b, s)
+        self.q_sec = None                  # 量子化で保持している break/verse
+        self.beat_head = False             # 直近の拍が量子化の頭だったか（push_onset が見る）
         self.pend_veto = None              # 判断待ちのサビ入り (b, s, bar_now, asked_at)
         self.anchor = None                 # cue: 直近の境目（拍の時刻・grid_anchor）
         self.song_hi = []; self.song_rms = []; self.t_first = None   # cue: 曲のそれまでの高域と音量（0.25 秒ごと・3 秒以降）。中央値を cue_score に渡す（評価の tools/ と同じ基準・11/7）
@@ -73,9 +80,11 @@ class Look:
     # --- サビ判定（③改のみ・11/4 夜 本人決定） ---
     def section(self, sec: str, rms_db: float, dt: float, now: float = 0.0, bar_s: float = 2.0,
                 window_start: bool = False, near: bool = False, bar_now: int = 10**6,
-                feat: dict | None = None, beat: bool = False, next_chorus: bool = False) -> str:
+                feat: dict | None = None, beat: bool = False, next_chorus: bool = False, beat_n: int = 0) -> str:
+        if beat:
+            self.beat_head = self.q > 0 and beat_n % (4 * self.q) == 1
         if self.rule == "cue" and feat is not None:
-            return self._section_cue(sec, feat, dt, now, bar_s, window_start, beat, next_chorus, bar_now)
+            return self._section_cue(sec, feat, dt, now, bar_s, window_start, beat, next_chorus, bar_now, beat_n)
         """改良前は「Claude の境界の後 8 小節＝サビ」で、境界は 8 小節おきに来るので窓が途切れずにつながり、1 曲のほぼ全部がサビになった
         （撮影の 11/4 17:07 のテイクで曲 14 の 17〜69 秒がずっとサビ＝全灯）。③改では Look がサビを持つ:
           - サビに入るのは、Claude の境界に達してから 1 小節の間に「境界の直前（4 小節）より音量が 1.5 dB 以上上がった」か、
@@ -121,7 +130,7 @@ class Look:
         self.events.append((why, now))
 
     # --- サビ判定（11/6 の改良・rule="cue"）: tools/chorus_replay.py の det_hybrid と同じ手順 ---
-    def _section_cue(self, sec, feat, dt, now, bar_s, window_start, beat, next_chorus, bar_now) -> str:
+    def _section_cue(self, sec, feat, dt, now, bar_s, window_start, beat, next_chorus, bar_now, beat_n=0) -> str:
         """拍ごとに kiku_hikari/cue.py の点数を出し、Claude の境界（8 小節の格子）に達してから win_bars 小節の間（手前 1 拍も）は閾値 thr_win、
         それ以外は thr_alone（grid_only なら入らない）。曲のそれまでの中央値より bright_min dB 明るくない所は入らない。
         サビ中は、格子の上でより強い段差（sup_win）が sup_min_bars 小節以上あとに来たら入り直す（B メロの入りを先にサビと取った時の乗り換え）。
@@ -142,10 +151,12 @@ class Look:
         if window_start:
             self.win_from = now; self.win_next_chorus = next_chorus
         if beat:
-            self.pend.append(now)
+            self.pend.append((now, self.q > 0 and beat_n % (4 * self.q) == 1))
         lat = p.get("lat", 0.3)
-        while self.pend and now >= self.pend[0] + lat:
-            b = self.pend.popleft()
+        head_now = False                                   # 量子化: この呼び出しで N 小節の頭の拍を採点したか
+        while self.pend and now >= self.pend[0][0] + lat:
+            b, on_q = self.pend.popleft()
+            head_now = head_now or on_q
             if len(self.hist) < 40 * 3:
                 continue
             arr = np.array(self.hist, dtype=np.float64)
@@ -182,7 +193,7 @@ class Look:
                     self.state = "rest"; self.rest_until = b + p["rest_bars"] * bar_s; self.low_run = 0
                 elif parts["loud_song"] < -p["drop_db"]:
                     self.low_run += 1
-                    if self.low_run >= 2 * 4:              # 2 小節（拍 8 つ）続けて静か
+                    if self.low_run >= 2 * 4 and (self.q == 0 or on_q):   # 2 小節（拍 8 つ）続けて静か（量子化なら N 小節の頭まで待つ）
                         self.state = "rest"; self.rest_until = b + p["rest_bars"] * bar_s
                 else:
                     self.low_run = 0
@@ -192,7 +203,17 @@ class Look:
                     self.state = "free"
                 else:
                     thr += p["rest_extra"]
-            if s >= thr and b - self.last_det >= p["min_gap_bars"] * bar_s:
+            cand = s >= thr and b - self.last_det >= p["min_gap_bars"] * bar_s
+            if self.q > 0:                                 # 量子化: 候補は N 小節の頭まで保留し、頭の拍で入る（N 小節過ぎた候補は捨てる）
+                if cand:
+                    self.q_pend = (b, s)
+                if self.q_pend is not None and b - self.q_pend[0] > self.q * bar_s:
+                    self.q_pend = None
+                cand = self.q_pend is not None and on_q
+                if cand:
+                    s = max(s, self.q_pend[1]); self.q_pend = None
+                    self.events.append(("quantized", b))
+            if cand:
                 if p["jev_veto"] and self.judge is not None and self.judge.available:
                     from .judge import cue_state
                     sb = None if self.anchor is None or b - self.anchor < 0.5 * bar_s else int(round((b - self.anchor) / bar_s))
@@ -206,13 +227,19 @@ class Look:
             self._resolve_veto(now, bar_s)
         if self.state == "chorus":
             return "chorus"
+        out = "verse"
         if len(self.e_hist) >= 20:
             xs = sorted(self.e_hist); thr_b = xs[len(xs) // 2]
             if self.e_db < thr_b - 6:
-                return "break"
-        if sec == "pre_chorus" and self.state == "free":
-            return "pre_chorus"
-        return "verse"
+                out = "break"
+        if out == "verse" and sec == "pre_chorus" and self.state == "free":
+            out = "pre_chorus"
+        if self.q > 0 and out in ("break", "verse"):     # 量子化: break と verse の切替は N 小節の頭の拍でだけ
+            if self.q_sec not in ("break", "verse") or head_now:
+                self.q_sec = out
+            return self.q_sec
+        self.q_sec = None
+        return out
 
     def _enter_cue(self, b: float, s: float, bar_now: int, bar_s: float, why: str = "cue"):
         self.state = "chorus"; self.ch_start = b; self.s_start = s; self.ch_end = b + self.chorus_max * bar_s; self.last_det = b
@@ -248,7 +275,7 @@ class Look:
     # --- 3. キメ ---
     def push_onset(self, onset: float, beat: bool, level: float, now: float, bar_s: float, sec: str):
         self.onsets.append(float(onset))
-        if not beat or len(self.onsets) < 80 or sec == "break":
+        if not beat or len(self.onsets) < 80 or sec == "break" or (self.q > 0 and not self.beat_head):   # 量子化: キメは N 小節の頭の拍だけ
             return False
         xs = list(self.onsets)[:-1]
         m = sum(xs) / len(xs); sd = math.sqrt(sum((x - m) ** 2 for x in xs) / len(xs)) or 1e-6
@@ -286,6 +313,8 @@ class Look:
             p["pan"], p["tilt"] = 0.5, 0.55
             p["color"] = "white"
             p["dimmer"] = min(p["dimmer"], 0.2 if self.show else 0.5)
+            if self.q > 0:                                # 量子化: verse のムービングは拍で明滅させず一定
+                p["dimmer"] = 0.2 if self.show else 0.5
             if self.show:                                 # 全灯版: 上段スポットも中央 2 台だけ・20% 以下（11/7: 30% → 20%）
                 slo = (ns - 2) // 2
                 sp = [min(v, 0.2) if slo <= i < slo + 2 else 0.0 for i, v in enumerate(sp)]
@@ -316,7 +345,7 @@ class Look:
             if self.show:                                 # 全灯版（11/7 本人決定「開いた時の明るさと色そのものを強く」）: Par は白を主体（2/3 が白・残りがサビの色）・全台 100%
                 cols = ["white", "white", color if color != "white" else nxt]
             out = [(PAR_RGB.get(cols[(i + bar) % len(cols)], PAR_RGB["white"]), 1.0) for i in range(n)]
-            p["dimmer"] = 0.75 + 0.25 * max(0.0, min(1.0, pulse))   # サビ中も拍の明滅を残す（75〜100%）
+            p["dimmer"] = 1.0 if self.q > 0 else 0.75 + 0.25 * max(0.0, min(1.0, pulse))   # サビ中も拍の明滅を残す（75〜100%）。量子化なら一定
             sp = [p["dimmer"]] * ns
             if self.show:                                 # 全灯版: 上段スポット 6 台 100% 固定・ムービングは 100% 固定で明るい色（暗い色 red/blue は yellow に）
                 sp = [1.0] * ns
