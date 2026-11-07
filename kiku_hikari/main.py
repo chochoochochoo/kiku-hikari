@@ -107,6 +107,7 @@ def main(argv=None):
     ap.add_argument("--structure-prior", default=None, help="曲構成の型（数字だけの JSON・kiku_hikari/prior.py）。cue の閾値と Claude の構成規則の 1 行に使う。未指定なら従来どおり")
     ap.add_argument("--grid-anchor", action="store_true", help="--chorus-rule cue の格子の引き直し（11/7・chorus-v3 候補）: 音の境目（小節頭で高域と音量が同時に段差・look.py の ga_*）を起点に、Claude の 8 小節格子の窓の位相をずらす。未指定なら従来どおり（cue_params の grid_anchor=1 と同じ）")
     ap.add_argument("--jev-veto", action=argparse.BooleanOptionalAction, default=True, help="--chorus-rule cue の拒否役（11/7 本人決定・既定 ON・タグ chorus-v3）: cue が入ろうとした拍で判断 API（TypeSafe Jev・kiku_hikari/judge.py）に「サビの 1 小節目か」の確率を聞き、低ければ入らない。鍵（TYPESAFE_API_KEY か .env）が無い・落ちた・1 秒以内に返らない時は今どおり入る（fail-open＝chorus-v2 と同じ）。--no-jev-veto で切る")
+    ap.add_argument("--prelearn", default=None, help="事前学習モード（11/8 本人の実験・提出物ではない）: tools/prelearn.py が書いたキューシート JSON。claude モードで、Claude のリアルタイムの読みの代わりに、このキューシートの区間・色・溜め・開き方を小節頭で出す。既定 None＝従来どおり")
     ap.add_argument("--quantize-bars", type=int, default=0, help="量子化（11/8 本人決定・第 3 段の回答者 D「2.8 や 4.8 等に限って明かりを作る」）: 0＝既定＝従来どおり。4 か 8 なら、サビの入り・キメ・ブレイクと verse の切替・開きを拍カウントの N 小節の頭に限り、拍ごとの明滅を止める。頭は拍追従の数えで、曲の 1 拍目と一致する保証は無い。効果は未測定")
     ap.add_argument("--candidates", action="store_true", help="② 候補選択式（11/7・chorus-v3 候補）: 要約に「これから来る小節頭 8 つの構造の手がかり表」（境目からの小節数・8 小節格子・前のサビからの小節数・音量の向き）を付け、Claude に次のサビの頭を 1 つ選ばせて（bars_to_chorus）その小節頭に窓を置く。未指定なら従来どおり")
     ap.add_argument("--chorus-hints", default=None, help="サビの頭の手がかりの文（テキスト・system に貼る）。指定すると Claude に「次のサビの頭まで何小節か」（bars_to_chorus）も答えさせ、その小節頭にもサビ判定の窓を置く。未指定なら従来どおり")
@@ -178,7 +179,12 @@ def main(argv=None):
               chorus_rule=a.chorus_rule if look is not None else "-", cue_params=look.cp if (look is not None and a.chorus_rule == "cue") else {},
               structure_prior=os.path.basename(a.structure_prior) if prior else "", quantize_bars=a.quantize_bars)
     worker = summarizer = None
-    if a.mode == "claude":
+    pre = None
+    if a.mode == "claude" and a.prelearn:
+        from .prelearn import CuePlayer
+        pre = CuePlayer(a.prelearn)
+        log.event("prelearn", file=os.path.basename(a.prelearn), method=pre.method, song=pre.song, cues=len(pre.cues))
+    if a.mode == "claude" and pre is None:
         from .claude_worker import ClaudeWorker, FeatureSummarizer
         hints = open(a.chorus_hints, encoding="utf-8").read() if a.chorus_hints else ""
         worker = ClaudeWorker(model=a.model or "claude-opus-5-5", effort=a.effort, log=log, variant=a.summary, knowledge=a.knowledge, color=a.color, extra_rules=prior_text(prior), chorus_hints=hints, candidates=a.candidates)
@@ -287,7 +293,7 @@ def main(argv=None):
                             f_due = True
                     log.event("beat", n=beats, tempo_bpm=st["tempo_bpm"], confidence=st["confidence"])
                 period_s = 60.0 / st["tempo_bpm"] if st["tempo_bpm"] else 0.5
-                if worker is not None:
+                if worker is not None or pre is not None:
                     params = engine.step(dt, st["phase"], period_s, level, now=now)
                     extra = {"tame": params.pop("tame"), "opened": params.pop("opened")}
                     for ev in engine.events:
@@ -307,6 +313,11 @@ def main(argv=None):
                     p2["pan"] = 0.5 + 0.3 * (params["pan"] - 0.5)
                 f.render(dmx, **p2)
             par_w = None; spot_w = []
+            if pre is not None:                        # 事前学習モード: キューシートの区間・色・境界を engine に渡す（キューが変わった時だけ）
+                pre.tick(now - t_start, now, engine)
+                for _, at_s, c in pre.events:
+                    log.event("cue", at=round(at_s, 2), bar=c["bar"], section=c["section"], color=c["color"], open_style=c["open_style"], movement=c["movement"])
+                pre.events.clear()
             if pars or spots or look is not None:   # Par＝面の色の配置パターン、スポット＝人を抜く明るさ（fixtures.par_pattern / spot_levels）
                 fsx = getattr(engine, "fs", None)
                 sec = fsx.section_now.value if (fsx and a.mode == "claude") else ""
@@ -337,8 +348,11 @@ def main(argv=None):
                 slv = spot_levels(len(spots), a.mode, params["dimmer"], level, sec, params.get("shutter", "open"))
                 if look is not None and fsx is not None:   # ③改（--profile new）: 明暗・溜め・キメ・手のフェード・回ごとの色（kiku_hikari/look.py）
                     bar_s = period_s * engine.bpb
-                    sec = look.section(sec, feat["rms_db"], dt, now=now, bar_s=bar_s, window_start=lc_start, near=(claude_k == 1 and lc_start), bar_now=bar,
-                                       feat={**feat, "onset": st.get("onset", 0.0)}, beat=beat, next_chorus=(fsx.section_next.value == "chorus") or lc_chorus, beat_n=engine.beat_count)
+                    if pre is not None:                # 事前学習モード: 区間はキューシートのまま（音響のサビ判定は使わない）
+                        sec = pre.section()
+                    else:
+                        sec = look.section(sec, feat["rms_db"], dt, now=now, bar_s=bar_s, window_start=lc_start, near=(claude_k == 1 and lc_start), bar_now=bar,
+                                           feat={**feat, "onset": st.get("onset", 0.0)}, beat=beat, next_chorus=(fsx.section_next.value == "chorus") or lc_chorus, beat_n=engine.beat_count)
                     lc_start = False; lc_chorus = False
                     for ev in look.events:
                         why, at = ev[0], ev[1]
@@ -353,7 +367,7 @@ def main(argv=None):
                         log.event("look_hit", at=round(now - t_start, 2))
                     params, pat, slv = look.apply(sec=sec, now=now, dt=dt, period_s=period_s, bar=bar, color=params["color"],
                                                   next_color=fsx.next_color.value, params=params, pat=pat, spots=slv,
-                                                  to_boundary=(claude_b - now) if (claude_b is not None and claude_b > now) else None, pulse=engine.level)   # 過ぎた境界は渡さない（--chorus-bars 0 で claude_b が戻らず、負の値で毎フレーム暗転していた）
+                                                  to_boundary=pre.to_boundary(now - t_start) if pre is not None else ((claude_b - now) if (claude_b is not None and claude_b > now) else None), pulse=engine.level)   # 過ぎた境界は渡さない（--chorus-bars 0 で claude_b が戻らず、負の値で毎フレーム暗転していた）
                     written = fx.render(dmx, **params)   # Stinger を書き換えた値で出し直す
                     for i, f in enumerate(fxs[1:], 1):
                         p2 = dict(params)
