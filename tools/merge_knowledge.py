@@ -17,6 +17,8 @@ sys.stdout.reconfigure(encoding="utf-8")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUTHOR_SOURCE = "作者の現場の判断（劇団・コンサートでの照明操作の経験）"
 REQUIRED = ("when", "then", "why")
+ARTIST_REWORD = (("型の電子ロック", "電子ロック"),)   # 言い換えの対（既存アーティスト名→ジャンル名）は本人の規約どおり v2 で適用済み。ここは「<名前>型の電子ロック」の名残だけ畳む
+
 
 
 def load_author(path: str):
@@ -76,6 +78,9 @@ def main():
     d["note"] = base.get("note", "") + f" ／v3: 作者が自分の現場の判断で規則を書き足した（{n_author} 本・source は「{AUTHOR_SOURCE}」・v2 欄は「作者」）。v2 の規則の文面は変えていない。測定（docs/eval-*.md）は v2 で行った。"
     d["rules"] = rules
     s = json.dumps(d, ensure_ascii=False, indent=2)
+    for w, r in ARTIST_REWORD:                      # 規約: 既存アーティスト名はプロンプトに出さない（出典 URL は残す）
+        s = s.replace(w, r)
+
     for bad in ("~/Claude", "gakushu/", ":\\", "Users/"):
         if bad in s:
             sys.exit(f"リポジトリ外の場所が残った: {bad}")

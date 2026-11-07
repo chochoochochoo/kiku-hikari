@@ -1,7 +1,7 @@
 {
  "version": "0.2-draft（BWC学習 rules-v2 第 3 版）",
  "written": "2026-11-03",
- "note": "研究の原文（research/bwc-*/extracts.json と sources/）から綴が起こした下書き。作者の判断で上書きする。energy の数値は原文に無く綴の目安（根拠なし）。palette は Stinger Spot の色ホイール 8 色（white/red/orange/yellow/green/blue/light_blue/pink）に限定。source は『研究フォルダ/sources/ファイル名:引用の先頭 40 字』。原文に根拠が無い項目は『（根拠なし・作者の判断待ち）』。 ／v2: 公式ライブ映像 100 本（idol 24・funk/mixture 21・guitar_rock 25・enka 30）を Gemini（gemini-3.8-flash・YouTube URL 入力）に時刻つきで書き出させ、Claude が集計して規則を差し替え・追加した。色は Gemini の文章記述からのキーワード集計で、人の目では未検品（確信度 中）。映像編集のつなぎ目と判定された変化は除外。数値の詳細は 学習側の集計・stats100.py の出力と rules-v2.md。第 3 版で、サカナクション公式ライブ 10 本（genre=electronic_rock・look の変化 69 件・確信度 低〜中）から R31〜R34 を足した。既存ジャンルの数値は 100 本のまま。",
+ "note": "研究の原文（research/bwc-*/extracts.json と sources/）から綴が起こした下書き。作者の判断で上書きする。energy の数値は原文に無く綴の目安（根拠なし）。palette は Stinger Spot の色ホイール 8 色（white/red/orange/yellow/green/blue/light_blue/pink）に限定。source は『研究フォルダ/sources/ファイル名:引用の先頭 40 字』。原文に根拠が無い項目は『（根拠なし・作者の判断待ち）』。 ／v2: 公式ライブ映像 100 本（idol 24・funk/mixture 21・guitar_rock 25・enka 30）を Gemini（gemini-3.8-flash・YouTube URL 入力）に時刻つきで書き出させ、Claude が集計して規則を差し替え・追加した。色は Gemini の文章記述からのキーワード集計で、人の目では未検品（確信度 中）。映像編集のつなぎ目と判定された変化は除外。数値の詳細は 学習側の集計・stats100.py の出力と rules-v2.md。第 3 版で、電子ロックの公式ライブ 10 本（genre=electronic_rock・look の変化 69 件・確信度 低〜中）から R31〜R34 を足した。既存ジャンルの数値は 100 本のまま。",
  "sections": {
   "intro": {
    "energy": 0.3,
@@ -401,15 +401,15 @@
   },
   {
    "id": "R31",
-   "when": "ジャンルが electronic_rock（サカナクション型の電子ロック）で、verse 頭",
+   "when": "ジャンルが electronic_rock（電子ロック）で、verse 頭",
    "then": "青系に限らず、真上からの白いスポットで歌い手 1 人を抜いてよい（R26 の電子ロック版）",
-   "why": "サカナクション 10 本の verse の色は white 6・blue 4 件で、白が青を上回る。",
+   "why": "電子ロック 10 本の verse の色は white 6・blue 4 件で、白が青を上回る。",
    "source": "観察: https://www.youtube.com/watch?v=Hz-VBzYHA0k&t=29s（s01 00:29・bright overhead blue-white spotlights illuminate t）／https://www.youtube.com/watch?v=OR_7ycQAWhU&t=51s（s02 00:51・Focused blue-white backlight spot on frontman sing）／https://www.youtube.com/watch?v=RE_-YdJYcsM&t=284s（s03 04:44・Soft top-down key light spotlighting singer center）",
    "v2": "新規"
   },
   {
    "id": "R32",
-   "when": "ジャンルが electronic_rock（サカナクション型の電子ロック）で、サビ頭",
+   "when": "ジャンルが electronic_rock（電子ロック）で、サビ頭",
    "then": "白を足して明るくするより、青・シアンのレーザーと LED の構造物（縦のバー・映像の装置）を点けて開く。照明は動かす（R04 の電子ロック版）",
    "why": "サビ頭 19 件で white 9・blue 系も多く、照明が動くのは 53%（他ジャンル 23〜47%）。LED・映像の記述は全 look の 22%（他ジャンル 10%）。",
    "source": "観察: https://www.youtube.com/watch?v=Hz-VBzYHA0k&t=120s（s01 02:00・blinding bright blue flood lights, intense diagona）／https://www.youtube.com/watch?v=OR_7ycQAWhU&t=108s（s02 01:48・Massive blue/cyan laser fans and vertical LED bars）／https://www.youtube.com/watch?v=RE_-YdJYcsM&t=327s（s03 05:27・Slightly broader cone of top white light spilling ）",
@@ -417,7 +417,7 @@
   },
   {
    "id": "R33",
-   "when": "ジャンルが electronic_rock（サカナクション型の電子ロック）で、サビの前の盛り上げ部分（pre_chorus）",
+   "when": "ジャンルが electronic_rock（電子ロック）で、サビの前の盛り上げ部分（pre_chorus）",
    "then": "サビ頭の 30〜40 秒前に、深い青か紫へ沈めて溜める（R03 の電子ロック版・確信度 低）",
    "why": "pre_chorus からサビまでは 29・31・41 秒（3 組のみ）。中身は深い青や紫の控えめな色。",
    "source": "観察: https://www.youtube.com/watch?v=Hz-VBzYHA0k&t=89s（s01 01:29・deep saturated blue wash across stage and arena wi）／https://www.youtube.com/watch?v=OR_7ycQAWhU&t=79s（s02 01:19・Subtle deep magenta/purple wash across band）",
@@ -425,7 +425,7 @@
   },
   {
    "id": "R34",
-   "when": "ジャンルが electronic_rock（サカナクション型の電子ロック）の曲全体とブレイク",
+   "when": "ジャンルが electronic_rock（電子ロック）の曲全体とブレイク",
    "then": "1 曲の色は 2 色まで。切替は少なくとも 20 秒空ける。ブレイクは暗転・ストロボ・映像のノイズで打つ（R20・R28・R07 の電子ロック版）",
    "why": "1 曲の色は中央値 2、切替の間隔は中央値 29.5 秒・下位 25% でも 21 秒（他ジャンル 12〜15 秒）。ブレイクは暗転・ストロボ・グリッチの例が多い。",
    "source": "観察: https://www.youtube.com/watch?v=Hz-VBzYHA0k&t=240s（s01 04:00・complete stage blackout）／https://www.youtube.com/watch?v=OR_7ycQAWhU&t=138s（s02 02:18・Dark stage with low laser planes scanning over sta）／https://www.youtube.com/watch?v=RE_-YdJYcsM&t=198s（s03 03:18・High-contrast dynamic strobing cuts and flickering）",
