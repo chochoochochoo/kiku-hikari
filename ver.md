@@ -452,3 +452,8 @@
 ### V202611.090 – 20261107-04:29:08
 **指示:** （入口経由・11/7 03:5x〜04:3x）既存のヒット曲 2 曲（ext_a・ext_b・出典非公開・曲名を書かない）を 3 走行で測定に加える／「ゼノンの矢」は m06 と同一ファイルなので別には測らず m06 の表記に／撮影の採用走行の旅 0.7 小節を注記／全体の集計
 **変更:** ext_a・ext_b × 3 走行 × 2 条件（chorus-v2 の挙動 8/18・空振り 17、chorus-v3 7/18・18・仮正解は allin1 のみ）、全体の集計（39 走行・99 点: 26/99・123 vs 26/99・103）、ゼノンの矢＝m06、撮影の採用走行 0.67 小節を docs/eval-chorus.md と README に追記。ゼノンの矢の走行は走る前に取りやめ。コードは変更なし
+
+---
+### V202611.091 – 20261107-11:49:17
+**指示:** （入口経由・11/7 11:3x・第 6 弾セキュリティ回の要点に沿った公開前点検）①git 履歴全体の秘密スキャン ②GitHub 設定の確認（gh の範囲） ③README の 7 点 ④別フォルダへ clone して README の手順どおり起動
+**変更:** コード・README は変更なし（記帳のみ）。結果: 全参照 93 コミット・7 参照に鍵の型（Anthropic・Google・GitHub・AWS・Slack・秘密鍵ブロック・Bearer）は無し、tools/secret_scan.py --history も OK（360 件）、GitHub の secret scanning 警告 0・.env は一度もコミットされていない。履歴に残るもの: 10.x の機器アドレス（7a96c72・ab633b1・bfa7358・8840752・30d05e5・d114f16。現行ファイルは da66023 で x.x.x.x）と Windows のユーザーパス（logs/public の audio_start 行 26 本・tools/ab_kb.py）。.env.example の 1e04cfe 3 行目は読取拒否で判別できず本人へ。GitHub: public・共同作業者は所有者のみ・secret scanning と push protection は有効・main の保護なし・Pages 無し・Actions の secret 0・deploy key 0。README の 7 点はすべてあり。清潔な clone（venv・README の pip 行）で beat／rules／claude（鍵なし）／--viz の起動を確認（exit 0）。鍵なしの claude モードは画面に警告が出ずログの claude_error だけ
