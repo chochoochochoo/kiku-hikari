@@ -5,7 +5,7 @@
 Built with Claude: Japan 2026 の提出作品。主催は Cerebral Valley × Anthropic、期間は 2026-11-02 12:30 〜 11-08 20:00。制作: I LLC。
 このリポジトリの内容はすべてハッカソン期間中に Claude Code で新規に制作した。期間前の準備は下の「11/2 前に行った準備」の節に書く。
 2026-11-04 に履歴を書き換えたため、それより前のコミット ID は無効。リポジトリ: https://github.com/chochoochochoo/kiku-hikari
-デモ動画は完成版 v5、2 分 57 秒、限定公開、11/8 公開: https://youtu.be/wCteL3VeMN4
+デモ動画は完成版 v5、2 分 57 秒、限定公開、11/8 公開: https://youtu.be/FdzBavUcjDU
 ナレーションは VOICEVOX:冥鳴ひまり。第 2 段の判定の結果カード入り。初回提出に添えたドラフトと本編 v1 はこの版に差し替えた。
 
 > 「聴く」と「光」は、ふだん一緒に使われない言葉です。小さな会場では、照明は拍で点滅するだけになりがちです。
