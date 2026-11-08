@@ -43,6 +43,14 @@ py -3.12 -m kiku_hikari.main --mode claude --file song.wav --viz --no-artnet --f
 - 鍵が無い場合: 拍連動のみの `--mode beat` か、Claude を使わないルール表の `--mode rules` で同じ画面が動きます。灯体がある場合の配線は下の「セットアップ」の節
 - 審査で見比べる用に、動画と同じ走行のログを `logs/public/` に置いています。説明は「第三者のブラインド判定」の節
 
+### 補足: 動画と同じ 3D の画面で見る — kuwatec PrefLight
+動画の灯体の絵は、kuwatec の照明ビジュアライザ PrefLight の表示を録画したものです。既製のソフトで審査の対象外ですが、同じ絵を手元で出せます。
+公式ページ: http://www.kuwatec.co.jp/preflight/jp/
+- 公式ページの記載: Windows 64bit・32bit と macOS 版をダウンロードできる。Art-Net・OSC で制御できる。製品パッケージは 31,240 円で、ユーザー登録が完了するまでの試用の制限は「ファイルへの保存ができない」「動画への記録が最長 10 秒」「起動時とファイル読み込み時に未登録のメッセージが出る」の 3 点。11/8 に公式ページとオンラインマニュアルで確認しました
+- 手順: PrefLight を起動し、このリポジトリの `preflight/stage.plt` を開く。灯体 23 台と演者 3 体が入っていて、アドレスはこのコードの既定値どおりです。ムービング 3 台が 1・12・23 の 11ch、Par 14 台が 34 から 9ch ずつ、スポット 6 台が 501 から 1ch ずつ、Art-Net はユニバース 0
+- 送り方: 上の起動コマンドの `--viz --no-artnet` を `--node <この PC の LAN アドレス> --universe 0 --fixtures 3 --pars 14 --spots 6 --profile show` に替える。送り先を直接指定すると ArtPoll の探索はしません。PrefLight が UDP 6454 を使うので、同じ PC の他の Art-Net 送信は止めます。この PC では 127.0.0.1 宛が届かない時があり、LAN アドレス宛で安定しました。詳細は `docs/hardware-notes.md` の PrefLight の節
+- 動画の撮影に使った起動は、この送り方に `--seconds` を足しただけです
+
 ## Claude の使い所
 | 場面 | 使ったもの | 何をしたか |
 |---|---|---|
