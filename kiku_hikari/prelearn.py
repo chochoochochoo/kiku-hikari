@@ -4,9 +4,16 @@ Claude のリアルタイムの読みは使わない。区間名（lsec）もキ
 from __future__ import annotations
 
 import json
+import math
 import os
 
 from .claude_worker import Arousal, Color, Confidence, Foresight, Movement, OpenStyle, Section, Tame, Valence
+
+# キューの最短間隔（秒）。これより細かく刻んだキューシートは読み込まない（2026-11-25）。
+# 手で作った 0.1 秒刻みのキューで Par の赤の点滅が毎秒 4.9 回、0.17 秒刻みで毎秒 3 回になった。光感受性発作の目安は毎秒 3 回以下。
+# fixtures.py の上限が抑えるのはストロボのチャンネルだけなので、キューによる色の切り替えの速さはここで止める。
+# tools/prelearn.py が作るキューは小節単位。同じ時刻に重なったキューは後ろの 1 つだけが効くので、そのまま通す。
+MIN_CUE_GAP_S = 1.0
 
 
 class CuePlayer:
@@ -16,6 +23,12 @@ class CuePlayer:
         self.cues = sorted(d["cues"], key=lambda c: c["t"])
         if not self.cues:
             raise ValueError("キューシートが空")
+        ts = [c["t"] for c in self.cues]
+        if not all(isinstance(t, (int, float)) and math.isfinite(t) for t in ts):
+            raise ValueError("キューシートの t が数値でない")
+        for a, b in zip(ts, ts[1:]):
+            if 0 < b - a < MIN_CUE_GAP_S - 1e-6:   # 1e-6 は小数の誤差の分（0.13 秒と 1.13 秒の差は 1 に届かない）
+                raise ValueError(f"キューの間隔が {MIN_CUE_GAP_S} 秒未満（{a} 秒と {b} 秒）。速い点滅になるので読み込まない")
         self.i = -1
         self.armed = -1                 # 境界（開き）を engine に渡した次のキューの番号（1 キュー 1 回）
         self.events = []                # ("cue", 曲の秒, キュー) を main.py がログに書く

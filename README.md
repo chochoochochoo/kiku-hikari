@@ -178,7 +178,7 @@ py -3.12 tools/beat_eval.py <wav のフォルダ>                               
   - 3層目 GitHub Actions の `.github/workflows/secret-scan.yml` で push ごとに全履歴、と GitHub の secret scanning / push protection
 - 作者の本名・住所・社名などの拒否語はリポジトリ外 `~/.kiku-hikari-denylist.txt` に置く。無い機械では警告が出る
 - 実行ログは `logs/` に出し、公開するものだけ `logs/public/` に置く。そこだけ追跡され、検査を通る。公開ログと `docs/hardware-notes.md` では、Art-Net ノードと PC の IP・MAC を `x.x.x.x` に伏せている。Art-Net 規格の 10.x 系の機器アドレスで自宅の LAN ではないが、実値は出さない。他の欄は不変
-- 抜け道の試験: `python tools/test_secret_scan.py` は一時クローンで 39 ケース。敵対レビュー 2 体・Codex・Gemini の監査で見つかった抜け道を全部含む
+- 抜け道の試験: `python tools/test_secret_scan.py` は一時クローンで 102 ケース。敵対レビュー 2 体・Codex・Gemini の監査で見つかった抜け道と、2026-11-25 の自主点検で直した抜けを含む
 
 ## 今後の課題 — 11/8 時点で製品に無いもの
 出どころは第 3 段のフォームと、11/8 に動画 v4i を見た照明家の質問。11/8 の提出には実装を入れない。
