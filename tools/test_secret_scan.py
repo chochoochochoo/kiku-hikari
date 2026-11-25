@@ -46,6 +46,8 @@ case("install_hooks（履歴がきれいなら 0）", 0, code, out)
 sh(["git", "add", "-A"])
 code, out = sh(["git", "commit", "-q", "--allow-empty", "-m", "test base"])
 case("きれいなコミットは通る", 0, code, out)
+if code != 0:   # 名義が拒否語に当たる環境など。以降の試験を、写した版を相手に続けるため、土台だけは検査を飛ばして作る
+    sh(["git", "commit", "-q", "--allow-empty", "--no-verify", "-m", "test base"])
 
 # A: ステージしてから作業ツリーを消す
 p = w("a.py", f'KEY = "{FAKE_ANT}"\n')
@@ -95,8 +97,9 @@ code, out = sh([sys.executable, "tools/secret_scan.py", "--range", "HEAD~2..HEAD
 case("G2 入れて消した鍵も --range が止める", 2, code, out)
 sh(["git", "reset", "-q", "--hard", "HEAD~2"])
 # K: マージの時に足した中身（2026-11-25）。diff-tree はマージで何も返さないので、-m を付けないと push 時と CI の検査から漏れる
-sh(["git", "checkout", "-q", "-b", "side-k"]); w("k_side.txt", "ok\n"); sh(["git", "add", "-A"]); sh(["git", "commit", "-q", "-m", "k side"])
-sh(["git", "checkout", "-q", "-"]); w("k_main.txt", "ok\n"); sh(["git", "add", "-A"]); sh(["git", "commit", "-q", "-m", "k main"])
+code, k_base = sh(["git", "rev-parse", "HEAD"])   # 後片付けで戻る位置。準備のコミットは、名義で止まる環境でも作れるよう検査を飛ばす
+sh(["git", "checkout", "-q", "-b", "side-k"]); w("k_side.txt", "ok\n"); sh(["git", "add", "-A"]); sh(["git", "commit", "-q", "--no-verify", "-m", "k side"])
+sh(["git", "checkout", "-q", "-"]); w("k_main.txt", "ok\n"); sh(["git", "add", "-A"]); sh(["git", "commit", "-q", "--no-verify", "-m", "k main"])
 sh(["git", "merge", "-q", "--no-ff", "--no-commit", "side-k"])
 w("k_merge.py", f'KEY = "{FAKE_ANT}"\n'); sh(["git", "add", "-A"])
 code, out = sh(["git", "commit", "-q", "-m", "K"])
@@ -108,10 +111,11 @@ code, out = sh([sys.executable, "tools/secret_scan.py", "--range", "HEAD~1..HEAD
 case("K2 マージで足した鍵を --range が止める", 2, code, out)
 code, out = sh([sys.executable, "tools/secret_scan.py", "--history"])
 case("K3 マージで足した鍵を --history が止める", 2, code, out)
-sh(["git", "reset", "-q", "--hard", "HEAD~1"]); sh(["git", "branch", "-q", "-D", "side-k"])
+sh(["git", "reset", "-q", "--hard", k_base]); sh(["git", "branch", "-q", "-D", "side-k"])
 # L: 種類が変わったファイル（シンボリックリンク → 普通のファイル）。git の状態は T で、ACMR だけを見ていると漏れる
 code, blob = sh(["git", "hash-object", "-w", "--stdin"], inp="target")
-sh(["git", "update-index", "--add", "--cacheinfo", f"120000,{blob},lnk"]); sh(["git", "commit", "-q", "-m", "L0 symlink"])
+code, l_base = sh(["git", "rev-parse", "HEAD"])
+sh(["git", "update-index", "--add", "--cacheinfo", f"120000,{blob},lnk"]); sh(["git", "commit", "-q", "--no-verify", "-m", "L0 symlink"])
 p = w("lnk", f'KEY = "{FAKE_ANT}"\n')
 code, blob = sh(["git", "hash-object", "-w", "lnk"])
 sh(["git", "update-index", "--cacheinfo", f"100644,{blob},lnk"])
@@ -122,7 +126,7 @@ case("L 種類が変わったファイルの鍵は pre-commit が止める", 1, 
 sh(["git", "commit", "-q", "--no-verify", "-m", "L"])
 code, out = sh([sys.executable, "tools/secret_scan.py", "--range", "HEAD~1..HEAD"])
 case("L2 種類が変わったファイルの鍵を --range が止める", 2, code, out)
-sh(["git", "reset", "-q", "--hard", "HEAD~2"])
+sh(["git", "reset", "-q", "--hard", l_base])
 if os.path.exists(p):
     os.remove(p)
 
